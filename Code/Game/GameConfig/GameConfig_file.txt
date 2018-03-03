@@ -1,0 +1,23 @@
+[SpaceShip]
+Angle = "30,000000"
+SideLenght = "2,000000"
+MaxLinearVeloc = "10,000000"
+MaxAngularVeloc = "10,000000"
+LinearAceleration = "1,000000"
+AngularAceleration = "1,000000"
+
+[Physics]
+LinearDragFactor = "1,000000"
+AngularDragFactor = "1,000000"
+
+[Asteroids]
+MaxSize = "6,000000"
+MaxDivisions = "3"
+MaxVeloc = "8,000000"
+MinVeloc = "1,000000"
+Fill = "TRUE"
+
+[Environment]
+MaxAsteroids = "10"
+TimeIncrement = "0,100000"
+AsterProbCreation = "0,500000"
