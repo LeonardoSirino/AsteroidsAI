@@ -11,10 +11,10 @@ LinearDragFactor = "1,000000"
 AngularDragFactor = "1,000000"
 
 [Asteroids]
-MaxSize = "6,000000"
+MaxSize = "100,000000"
 MaxDivisions = "3"
-MaxVeloc = "8,000000"
-MinVeloc = "1,000000"
+MaxVeloc = "200,000000"
+MinVeloc = "50,000000"
 Fill = "TRUE"
 
 [Environment]
