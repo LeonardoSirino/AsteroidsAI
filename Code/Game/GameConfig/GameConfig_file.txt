@@ -24,6 +24,6 @@ AsterProbCreation = "0,500000"
 LogEnabled = "FALSE"
 
 [Shots]
-MinTimeShots = "0,100000"
+MinTimeShots = "0,250000"
 ShotSize = "5,000000"
 ShotSpeed = "500,000000"
