@@ -13,17 +13,17 @@ AngularDragFactor = "0,900000"
 [Asteroids]
 MaxSize = "100,000000"
 MaxDivisions = "3"
-MaxVeloc = "200,000000"
-MinVeloc = "50,000000"
+MaxVeloc = "20,000000"
+MinVeloc = "10,000000"
 Fill = "TRUE"
 
 [Environment]
 MaxAsteroids = "10"
 TimeIncrement = "0,100000"
 AsterProbCreation = "0,500000"
-LogEnabled = "FALSE"
+LogEnabled = "TRUE"
 
 [Shots]
-MinTimeShots = "0,250000"
+MinTimeShots = "0,100000"
 ShotSize = "5,000000"
 ShotSpeed = "500,000000"

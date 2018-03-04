@@ -1,0 +1,3 @@
+Remover método Draw dos objetos Asteroid e Shoot, fazer com que o desenho pegue as informações direto da VI HoldData.
+Fazer com que a VI display guarde na memória as configurações necessárias para os desenhos (tamanho do asteroide e do tiro).
+Desvincular loop de movimentação de obejtos do loop de desenho da cena.
