@@ -21,3 +21,8 @@ Fill = "TRUE"
 MaxAsteroids = "10"
 TimeIncrement = "0,100000"
 AsterProbCreation = "0,500000"
+
+[Shots]
+MinTimeShots = "0,100000"
+ShotSize = "5,000000"
+ShotSpeed = "500,000000"
