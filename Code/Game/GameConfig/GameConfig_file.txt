@@ -1,14 +1,14 @@
 [SpaceShip]
-Angle = "30,000000"
-SideLenght = "2,000000"
-MaxLinearVeloc = "10,000000"
-MaxAngularVeloc = "10,000000"
-LinearAceleration = "1,000000"
-AngularAceleration = "1,000000"
+Angle = "15,000000"
+SideLenght = "40,000000"
+MaxLinearVeloc = "250,000000"
+MaxAngularVeloc = "100,000000"
+LinearAceleration = "200,000000"
+AngularAceleration = "200,000000"
 
 [Physics]
-LinearDragFactor = "1,000000"
-AngularDragFactor = "1,000000"
+LinearDragFactor = "0,900000"
+AngularDragFactor = "0,900000"
 
 [Asteroids]
 MaxSize = "100,000000"
