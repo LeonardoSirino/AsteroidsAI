@@ -17,7 +17,81 @@ class GameSettings:
         self.angDrag = 0.9
 
 
-game = GameSettings
+# Criação do conjunto de configurações do jogo
+game = GameSettings()
+
+
+class AsterManage:
+    def __init__(self):
+        self.__maxAsters = 10
+        self.__minVel = 0.5
+        self.__maxVel = 3
+        self.maxSize = 30
+        self.maxDivs = 3
+        self.asters = []
+        self.LastID = 0
+
+    def RandomCreation(self):
+        if len(self.asters) < self.__maxAsters:
+            vel = random.uniform(self.__minVel, self.__maxVel)
+            direction = random.uniform(0, 2 * m.pi)
+            size = random.randint(1, self.maxDivs)
+            a = random.randint(1, 4)
+
+            if a == 1:
+                x_pos = -self.maxSize
+                y_pos = random.randint(-self.maxSize,
+                                       SCREEN_HEIGHT + self.maxSize)
+            elif a == 2:
+                x_pos = SCREEN_WIDTH + self.maxSize
+                y_pos = random.randint(-self.maxSize,
+                                       SCREEN_HEIGHT + self.maxSize)
+            elif a == 3:
+                x_pos = random.randint(-self.maxSize,
+                                       SCREEN_WIDTH + self.maxSize)
+                y_pos = -self.maxSize
+            elif a == 4:
+                x_pos = random.randint(-self.maxSize,
+                                       SCREEN_WIDTH + self.maxSize)
+                y_pos = self.maxSize + SCREEN_WIDTH
+            else:
+                pass
+
+            NewAster = Aster(x_pos, y_pos, vel, direction, size, self.LastID)
+            self.asters.append(NewAster)
+            self.LastID += 1
+
+    def updateAll(self):
+        for aster in self.asters:
+            aster.update()
+
+    def drawAll(self, screen):
+        for aster in self.asters:
+            aster.draw(screen)
+
+
+# Criação do gerente de asteróides
+ManagerAsters = AsterManage()
+
+
+class Aster:
+    def __init__(self, x_pos, y_pos, vel, direction, size, ID):
+        self.x_pos = x_pos
+        self.y_pos = y_pos
+        self.vel = vel
+        self.direction = direction
+        self.size = size
+        self.ID = ID
+
+    def update(self):
+        self.x_pos += self.vel * m.sin(self.direction)
+        self.y_pos += self.vel * m.cos(self.direction)
+
+    def draw(self, screen):
+        size = ManagerAsters.maxSize / 2**(ManagerAsters.maxDivs - self.size)
+        pygame.draw.circle(screen, WHITE, (int(self.x_pos), int(self.y_pos)), int(size))
+        print("Desenhado asteroide de ID " + str(self.ID) + " coordenadas: x = " +
+              str(self.x_pos) + "; y = " + str(self.y_pos) + " -- tam: " + str(self.size))
 
 
 class SpaceShip:
@@ -80,9 +154,9 @@ class SpaceShip:
         self.ang_vel = Limit(self.ang_vel, -self.__maxAngVel, self.__maxAngVel)
 
     def update(self):
-        self.x_vel *= drag
-        self.y_vel *= drag
-        self.ang_vel *= drag
+        self.x_vel *= game.drag
+        self.y_vel *= game.drag
+        self.ang_vel *= game.angDrag
         self.x_pos += self.x_vel
         self.x_pos = Limit(self.x_pos, 0, SCREEN_WIDTH)
         self.y_pos += self.y_vel
@@ -122,6 +196,11 @@ def main():
     # -------- Loop principal -----------
     while not done:
 
+        # Analisando os eventos
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                done = True
+
         # Analisando teclas pressionadas
         keys = np.array(pygame.key.get_pressed())
         PressedKeys = np.where(keys == 1)[0]
@@ -145,6 +224,11 @@ def main():
         # Desenha a espaço-nave
         Nave.update()
         pygame.draw.polygon(screen, WHITE, Nave.GetCoords())
+
+        # Desenhando asteróides
+        ManagerAsters.RandomCreation()
+        ManagerAsters.updateAll()
+        ManagerAsters.drawAll(screen)
 
         # Definindo FPS
         clock.tick(60)
