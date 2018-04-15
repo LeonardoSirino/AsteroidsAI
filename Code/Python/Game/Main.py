@@ -3,33 +3,28 @@ import random
 import math as m
 import numpy as np
 
-# Define some colors
+# Definição de algumas constantes
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 
 SCREEN_WIDTH = 700
 SCREEN_HEIGHT = 500
-BALL_SIZE = 25
-
-drag = 0.9
-AngDrag = 0.9
 
 
-class Ball:
-    """
-    Class to keep track of a ball's location and vector.
-    """
-
+class GameSettings:
     def __init__(self):
-        self.x = 0
-        self.y = 0
-        self.float_x = 0
-        self.float_y = 0
-        self.change_x = 0
-        self.change_y = 0
+        self.drag = 0.9
+        self.angDrag = 0.9
+
+
+game = GameSettings
 
 
 class SpaceShip:
+    """
+    Classe para a espaço-nave
+    """
+
     def __init__(self):
         self.x_pos = SCREEN_WIDTH / 2
         self.y_pos = SCREEN_HEIGHT / 2
@@ -107,61 +102,25 @@ def Limit(value, min, max):
     return x
 
 
-def make_ball():
-    """
-    Function to make a new, random ball.
-    """
-    ball = Ball()
-    # Starting position of the ball.
-    # Take into account the ball size so we don't spawn on the edge.
-    ball.x = random.randrange(BALL_SIZE, SCREEN_WIDTH - BALL_SIZE)
-    ball.float_x = float(ball.x)
-    ball.y = random.randrange(BALL_SIZE, SCREEN_HEIGHT - BALL_SIZE)
-    ball.float_y = float(ball.y)
-
-    # Speed and direction of rectangle
-    ball.change_x = random.randrange(-10, 10)
-    ball.change_y = random.randrange(-10, 10)
-
-    return ball
-
-
 def main():
-    """
-    This is our main program.
-    """
     pygame.init()
 
-    # Set the height and width of the screen
+    # Criação da tela
     size = [SCREEN_WIDTH, SCREEN_HEIGHT]
     screen = pygame.display.set_mode(size)
 
-    pygame.display.set_caption("Bouncing Balls")
+    pygame.display.set_caption("Asteroids AI")
 
-    # Loop until the user clicks the close button.
+    # Critério de parada
     done = False
 
-    # Used to manage how fast the screen updates
+    # Inicialização
     clock = pygame.time.Clock()
-
-    ball_list = []
 
     Nave = SpaceShip()
 
-    ball = make_ball()
-    ball_list.append(ball)
-
-    # -------- Main Program Loop -----------
+    # -------- Loop principal -----------
     while not done:
-        # --- Event Processing
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                done = True
-            elif event.type == pygame.KEYDOWN:
-                # Space bar! Spawn a new ball.
-                if event.key == pygame.K_SPACE:
-                    ball = make_ball()
-                    ball_list.append(ball)
 
         # Analisando teclas pressionadas
         keys = np.array(pygame.key.get_pressed())
@@ -180,45 +139,20 @@ def main():
             elif key == 276:
                 Nave.Rotate("+")
 
-        # --- Logic
-        for ball in ball_list:
-            # Arrasto
-            ball.change_x *= drag
-            ball.change_y *= drag
-
-            # Move the ball's center
-            ball.float_x += ball.change_x
-            ball.float_y += ball.change_y
-
-            ball.x = int(ball.float_x)
-            ball.y = int(ball.float_y)
-
-            # Bounce the ball if needed
-            if ball.y > SCREEN_HEIGHT - BALL_SIZE or ball.y < BALL_SIZE:
-                ball.change_y *= -1
-            if ball.x > SCREEN_WIDTH - BALL_SIZE or ball.x < BALL_SIZE:
-                ball.change_x *= -1
-
-        # --- Drawing
-        # Set the screen background
+        # --- Desenhando
         screen.fill(BLACK)
-
-        # Draw the balls
-        for ball in ball_list:
-            pygame.draw.circle(screen, WHITE, [ball.x, ball.y], BALL_SIZE)
 
         # Desenha a espaço-nave
         Nave.update()
         pygame.draw.polygon(screen, WHITE, Nave.GetCoords())
 
-        # --- Wrap-up
-        # Limit to 60 frames per second
+        # Definindo FPS
         clock.tick(60)
 
-        # Go ahead and update the screen with what we've drawn.
+        # Atualizando a tela
         pygame.display.flip()
 
-    # Close everything down
+    # Encerra tudo
     pygame.quit()
 
 
