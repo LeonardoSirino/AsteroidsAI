@@ -59,7 +59,8 @@ class AsterManage:
             else:
                 pass
 
-            NewAster = Aster(x_pos, y_pos, vel, direction, size, self.LastID)
+            NewAster = Aster(x_pos, y_pos, vel, direction,
+                             size, self.LastID, self)
             self.asters.append(NewAster)
             self.LastID += 1
 
@@ -80,19 +81,30 @@ class AsterManage:
 
         del self.asters[index]
 
+    def CheckForColision(self, Shoots):
+        for aster in self.asters:
+            for shoot in Shoots:
+                distance = m.sqrt((shoot.x_pos - aster.x_pos)
+                                  ** 2 + (shoot.y_pos - aster.y_pos)**2)
+                if distance <= aster.GetSize():
+                    shoot.delete()
+                    aster.delete()
+
+
 
 # Criação do gerente de asteróides
 ManagerAsters = AsterManage()
 
 
 class Aster:
-    def __init__(self, x_pos, y_pos, vel, direction, size, ID):
+    def __init__(self, x_pos, y_pos, vel, direction, size, ID, manager):
         self.x_pos = x_pos
         self.y_pos = y_pos
         self.vel = vel
         self.direction = direction
         self.size = size
         self.ID = ID
+        self.manager = manager
 
     def update(self):
         self.x_pos += self.vel * m.sin(self.direction)
@@ -109,13 +121,20 @@ class Aster:
             ManagerAsters.DeleteAster(ID=self.ID)
 
     def draw(self, screen):
-        size = ManagerAsters.maxSize / 2**(ManagerAsters.maxDivs - self.size)
+        size = self.GetSize()
         pygame.draw.circle(screen, WHITE, (int(self.x_pos),
                                            int(self.y_pos)), int(size))
         """
         print("Desenhado asteroide de ID " + str(self.ID) + " coordenadas: x = " +
               str(self.x_pos) + "; y = " + str(self.y_pos) + " -- tam: " + str(self.size))
         """
+
+    def GetSize(self):
+        size = self.manager.maxSize / 2**(self.manager.maxDivs - self.size)
+        return size
+
+    def delete(self):
+        self.manager.DeleteAster(self.ID)
 
 
 class ShootManage:
@@ -130,7 +149,7 @@ class ShootManage:
     def shoot(self, Nave):
         CurrentTime = time.time()
         if (CurrentTime - self.lastTime) > self.__minTimeShoots:
-            NewShoot = Shoot(Nave, self.lastID)
+            NewShoot = Shoot(Nave, self.lastID, self)
             self.shoots.append(NewShoot)
             self.lastTime = CurrentTime
             self.lastID += 1
@@ -152,17 +171,21 @@ class ShootManage:
 
         del self.shoots[index]
 
+    def GetAllShoots(self):
+        return self.shoots
+
 
 ManagerShoots = ShootManage()
 
 
 class Shoot:
-    def __init__(self, Nave, ID):
+    def __init__(self, Nave, ID, manager):
         self.direction = Nave.angle + m.pi
         self.vel = ManagerShoots.ShootVeloc
         self.x_pos = Nave.x_pos
         self.y_pos = Nave.y_pos
         self.ID = ID
+        self.manager = manager
 
     def update(self):
         self.x_pos += self.vel * m.sin(self.direction)
@@ -182,6 +205,9 @@ class Shoot:
         size = ManagerShoots.shootSize
         pygame.draw.circle(screen, RED, (int(self.x_pos),
                                          int(self.y_pos)), int(size))
+
+    def delete(self):
+        self.manager.deleteShoot(self.ID)
 
 
 class SpaceShip:
@@ -313,6 +339,10 @@ def main():
 
         # --- Desenhando
         screen.fill(BLACK)
+
+        # Tratando colisões
+        shoots = ManagerShoots.shoots
+        ManagerAsters.CheckForColision(shoots)
 
         # Desenha a espaço-nave
         Nave.update()
