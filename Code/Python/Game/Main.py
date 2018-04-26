@@ -33,6 +33,11 @@ class AsterManage:
         self.asters = []
         self.LastID = 0
 
+    def AsterCreation(self, x_pos, y_pos, veloc, direction, size):
+        aster = Aster(x_pos, y_pos, veloc, direction, size, self.LastID)
+        self.asters.append(aster)
+        self.LastID +=1
+
     def RandomCreation(self):
         if len(self.asters) < self.__maxAsters:
             vel = random.uniform(self.__minVel, self.__maxVel)
@@ -135,6 +140,15 @@ class Aster:
 
     def delete(self):
         self.manager.DeleteAster(self.ID)
+
+    def split(self):
+        if self.size == 0:
+            self.delete()
+        else:
+            self.manager.AsterCreation(self.x_pos, self.y_pos, self.vel, self.direction + m.radians(15), self.size - 1)
+            self.manager.AsterCreation(self.x_pos, self.y_pos, self.vel, self.direction - m.radians(15), self.size - 1)
+            self.delete()
+            
 
 
 class ShootManage:
