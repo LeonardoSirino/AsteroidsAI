@@ -31,12 +31,10 @@ class AsterManage:
         self.maxSize = 30
         self.maxDivs = 3
         self.asters = []
-        self.LastID = 0
 
     def AsterCreation(self, x_pos, y_pos, veloc, direction, size):
-        aster = Aster(x_pos, y_pos, veloc, direction, size, self.LastID)
+        aster = Aster(x_pos, y_pos, veloc, direction, size, self)
         self.asters.append(aster)
-        self.LastID +=1
 
     def RandomCreation(self):
         if len(self.asters) < self.__maxAsters:
@@ -65,9 +63,8 @@ class AsterManage:
                 pass
 
             NewAster = Aster(x_pos, y_pos, vel, direction,
-                             size, self.LastID, self)
+                             size, self)
             self.asters.append(NewAster)
-            self.LastID += 1
 
     def updateAll(self):
         for aster in self.asters:
@@ -93,7 +90,7 @@ class AsterManage:
                                   ** 2 + (shoot.y_pos - aster.y_pos)**2)
                 if distance <= aster.GetSize():
                     shoot.delete()
-                    aster.delete()
+                    aster.split()
 
 
 
@@ -102,28 +99,32 @@ ManagerAsters = AsterManage()
 
 
 class Aster:
-    def __init__(self, x_pos, y_pos, vel, direction, size, ID, manager):
+    class_ID = 0
+
+    def __init__(self, x_pos, y_pos, vel, direction, size, manager):
         self.x_pos = x_pos
         self.y_pos = y_pos
         self.vel = vel
         self.direction = direction
         self.size = size
-        self.ID = ID
+        self.ID = self.class_ID
         self.manager = manager
+
+        Aster.class_ID += 1
 
     def update(self):
         self.x_pos += self.vel * m.sin(self.direction)
         self.y_pos += self.vel * m.cos(self.direction)
 
         Cond_a = self.x_pos < -2 * \
-            ManagerAsters.maxSize or self.x_pos > (
+            self.manager.maxSize or self.x_pos > (
                 SCREEN_WIDTH + 2 * ManagerAsters.maxSize)
         Cond_b = self.y_pos < -2 * \
-            ManagerAsters.maxSize or self.y_pos > (
+            self.manager.maxSize or self.y_pos > (
                 SCREEN_HEIGHT + 2 * ManagerAsters.maxSize)
 
         if Cond_a or Cond_b:
-            ManagerAsters.DeleteAster(ID=self.ID)
+            self.manager.DeleteAster(ID=self.ID)
 
     def draw(self, screen):
         size = self.GetSize()
@@ -145,28 +146,27 @@ class Aster:
         if self.size == 0:
             self.delete()
         else:
-            self.manager.AsterCreation(self.x_pos, self.y_pos, self.vel, self.direction + m.radians(15), self.size - 1)
-            self.manager.AsterCreation(self.x_pos, self.y_pos, self.vel, self.direction - m.radians(15), self.size - 1)
+            self.manager.AsterCreation(
+                self.x_pos, self.y_pos, self.vel, self.direction + m.radians(15), self.size - 1)
+            self.manager.AsterCreation(
+                self.x_pos, self.y_pos, self.vel, self.direction - m.radians(15), self.size - 1)
             self.delete()
-            
 
 
 class ShootManage:
     def __init__(self):
-        self.__minTimeShoots = 0.2
+        self.__minTimeShoots = 0.05
         self.ShootVeloc = 20
         self.shootSize = 4
         self.shoots = []
         self.lastTime = time.time() - self.__minTimeShoots
-        self.lastID = 0
 
     def shoot(self, Nave):
         CurrentTime = time.time()
         if (CurrentTime - self.lastTime) > self.__minTimeShoots:
-            NewShoot = Shoot(Nave, self.lastID, self)
+            NewShoot = Shoot(Nave, self)
             self.shoots.append(NewShoot)
             self.lastTime = CurrentTime
-            self.lastID += 1
 
     def updateAll(self):
         for shoot in self.shoots:
@@ -193,30 +193,35 @@ ManagerShoots = ShootManage()
 
 
 class Shoot:
-    def __init__(self, Nave, ID, manager):
+
+    class_ID = 0
+
+    def __init__(self, Nave, manager):
         self.direction = Nave.angle + m.pi
         self.vel = ManagerShoots.ShootVeloc
         self.x_pos = Nave.x_pos
         self.y_pos = Nave.y_pos
-        self.ID = ID
+        self.ID = self.class_ID
         self.manager = manager
+
+        Shoot.class_ID += 1
 
     def update(self):
         self.x_pos += self.vel * m.sin(self.direction)
         self.y_pos += self.vel * m.cos(self.direction)
 
         Cond_a = self.x_pos < -2 * \
-            ManagerShoots.shootSize or self.x_pos > (
+            self.manager.shootSize or self.x_pos > (
                 SCREEN_WIDTH + 2 * ManagerShoots.shootSize)
         Cond_b = self.y_pos < -2 * \
-            ManagerShoots.shootSize or self.y_pos > (
+            self.manager.shootSize or self.y_pos > (
                 SCREEN_HEIGHT + 2 * ManagerShoots.shootSize)
 
         if Cond_a or Cond_b:
-            ManagerShoots.deleteShoot(ID=self.ID)
+            self.manager.deleteShoot(ID=self.ID)
 
     def draw(self, screen):
-        size = ManagerShoots.shootSize
+        size = self.manager.shootSize
         pygame.draw.circle(screen, RED, (int(self.x_pos),
                                          int(self.y_pos)), int(size))
 
@@ -320,8 +325,8 @@ def main():
 
     # Inicialização
     clock = pygame.time.Clock()
-
     Nave = SpaceShip()
+    t1 = time.time()
 
     # -------- Loop principal -----------
     while not done:
@@ -376,6 +381,10 @@ def main():
 
         # Atualizando a tela
         pygame.display.flip()
+
+        print("FPS: " + str(1 / (time.time() - t1)))
+
+        t1 = time.time()
 
     # Encerra tudo
     pygame.quit()
