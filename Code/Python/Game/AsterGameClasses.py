@@ -15,6 +15,7 @@ class GameSettings:
             255, 255, 255), "red": (255, 0, 0), "blue": (0, 0, 255)}
         pygame.font.init()
         self.font = pygame.font.SysFont('Comic Sans MS', 20)
+        self.GameOverIfColide = False
 
 
 class AsterManage:
@@ -23,7 +24,7 @@ class AsterManage:
         self.__minVel = 1
         self.__maxVel = 4
         self.maxSize = 30
-        self.maxDivs = 3
+        self.maxDivs = 2
         self.asters = []
 
     def SetConfig(self, config):
@@ -250,6 +251,7 @@ class SpaceShip:
     def __init__(self):
         self.x_vel = 0
         self.y_vel = 0
+        self.veloc = 0
         self.ang_vel = 0
         self.angle = 0
         self.__side = 25
@@ -307,6 +309,7 @@ class SpaceShip:
     def update(self):
         self.x_vel *= self.settings.drag
         self.y_vel *= self.settings.drag
+        self.veloc *= self.settings.drag
         self.ang_vel *= self.settings.angDrag
         self.x_pos += self.x_vel
         self.x_pos = Limit(self.x_pos, 0, self.settings.SCREEN_WIDTH)
@@ -318,6 +321,15 @@ class SpaceShip:
         pygame.draw.polygon(screen, self.settings.colors.get(
             "white"), self.GetCoords())
 
+    def push(self):
+        self.veloc += self.__acel
+        self.veloc = Limit(self.veloc, -self.__maxVel, self.__maxVel)
+        self.x_vel = -self.veloc * m.sin(self.angle)
+        self.y_vel = -self.veloc * m.cos(self.angle)
+
+    def breaking(self):
+        self.veloc *= 0.8
+
 
 class FPS:
     def __init__(self, color):
@@ -326,7 +338,7 @@ class FPS:
         self.sumFPS = 0
         self.lastFPS = 0
         pygame.font.init()
-        self.font = pygame.font.SysFont('Comic Sans MS', 20)
+        self.font = pygame.font.SysFont('Calibri', 20, bold=1)
         self.color = color
 
     def __call__(self, screen):
@@ -351,24 +363,26 @@ class FPS:
             self.i = 0
             self.sumFPS = 0
 
+
 class score:
     def __init__(self, color):
         self.TimeScore = 0.01
         self.ShootScore = -1
         self.DestroyScore = 10
+        self.ShipColisionScore = -50
         self.value_to_show = 0
         self.value = 0
         self.i = 0
         pygame.font.init()
-        self.font = pygame.font.SysFont('Comic Sans MS', 20)
+        self.font = pygame.font.SysFont('Calibri', 20, bold=1)
         self.color = color
 
     def __call__(self, screen):
         self.value += self.TimeScore
         self.i += 1
 
-        text = self.font.render("SCORE: " + 
-            str(round(self.value_to_show, 2)), False, self.color)
+        text = self.font.render("SCORE: " +
+                                str(round(self.value_to_show, 2)), False, self.color)
         screen.blit(text, (0, 30))
 
         if self.i == 6:
@@ -380,6 +394,9 @@ class score:
 
     def destroy(self):
         self.value += self.DestroyScore
+
+    def colision(self):
+        self.value += self.ShipColisionScore
 
 
 def Limit(value, min, max):
@@ -410,7 +427,7 @@ class Game:
         self.Nave.SetConfig(self.settings)
         self.FPS = FPS(self.settings.colors.get("blue"))
         self.score = score(self.settings.colors.get("blue"))
-        
+
     def init_game(self):
         pygame.init()
 
@@ -435,7 +452,7 @@ class Game:
         # Analisando teclas pressionadas
         keys = np.array(pygame.key.get_pressed())
         PressedKeys = np.where(keys == 1)[0]
-        # print(PressedKeys)
+        #print(PressedKeys)
         for key in PressedKeys:
             if key == 119:
                 self.Nave.Acelerate("ver", "-")
@@ -453,6 +470,10 @@ class Game:
                 shooted = self.ManagerShoots.shoot(self.Nave)
                 if shooted:
                     self.score.shoot()
+            elif key == 120:
+                self.Nave.push()
+            elif key == 122:
+                self.Nave.breaking()
 
     def update(self):
         # Tratando colisões
@@ -463,7 +484,10 @@ class Game:
         colision = self.ManagerAsters.CheckForShipColision(
             self.Nave.GetCoords())
         if colision:
-            self.GameOver = True
+            if self.settings.GameOverIfColide:
+                self.GameOver = True
+            else:
+                self.score.colision()
 
         self.Nave.update()
         self.ManagerShoots.updateAll()
