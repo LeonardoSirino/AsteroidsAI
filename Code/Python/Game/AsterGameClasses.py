@@ -3,16 +3,17 @@ import random
 import math as m
 import numpy as np
 import time
+import copy
 
 
 class GameSettings:
     def __init__(self):
-        self.drag = 0.9
-        self.angDrag = 0.9
+        self.drag = 0.99
+        self.angDrag = 0.95
         self.SCREEN_WIDTH = 700
         self.SCREEN_HEIGHT = 500
         self.colors = {"black": (0, 0, 0), "white": (
-            255, 255, 255), "red": (255, 0, 0), "blue": (0, 0, 255)}
+            255, 255, 255), "red": (255, 0, 0), "blue": (0, 0, 255), "green": (0, 255, 0)}
         pygame.font.init()
         self.font = pygame.font.SysFont('Comic Sans MS', 20)
         self.GameOverIfColide = False
@@ -107,6 +108,16 @@ class AsterManage:
 
         return colision
 
+    def RefreshAll(self):
+        for aster in self.asters:
+            aster.InTheWay = False
+
+    def MarkInTarget(self, IDs):
+        for aster in self.asters:
+            for ID in IDs:
+                if ID == aster.ID:
+                    aster.InTheWay = True
+
 
 class Aster:
     class_ID = 0
@@ -119,6 +130,7 @@ class Aster:
         self.size = size
         self.ID = self.class_ID
         self.manager = manager
+        self.InTheWay = False
 
         Aster.class_ID += 1
 
@@ -138,8 +150,12 @@ class Aster:
 
     def draw(self, screen):
         size = self.GetSize()
-        pygame.draw.circle(screen, self.manager.settings.colors.get("white"), (int(self.x_pos),
-                                                                               int(self.y_pos)), int(size))
+        if self.InTheWay:
+            color = "green"
+        else:
+            color = "white"
+        pygame.draw.circle(screen, self.manager.settings.colors.get(color), (int(self.x_pos),
+                                                                             int(self.y_pos)), int(size))
         """
         print("Desenhado asteroide de ID " + str(self.ID) + " coordenadas: x = " +
               str(self.x_pos) + "; y = " + str(self.y_pos) + " -- tam: " + str(self.size))
@@ -161,6 +177,20 @@ class Aster:
             self.manager.AsterCreation(
                 self.x_pos, self.y_pos, self.vel, self.direction - m.radians(15), self.size - 1)
             self.delete()
+
+    def ChangeToShipPersp(self, nave):
+        self.old_x = self.x_pos
+        self.old_y = self.y_pos
+        x = self.x_pos - nave.x_pos
+        y = self.y_pos - nave.y_pos
+        xx = x * m.cos(-nave.angle) + y * m.sin(-nave.angle)
+        yy = - x * m.sin(-nave.angle) + y * m.cos(-nave.angle)
+        self.x_pos = xx
+        self.y_pos = yy
+
+    def ReturnPersp(self):
+        self.x_pos = self.old_x
+        self.y_pos = self.old_y
 
 
 class ShootManage:
@@ -329,6 +359,22 @@ class SpaceShip:
 
     def breaking(self):
         self.veloc *= 0.8
+        self.x_vel = -self.veloc * m.sin(self.angle)
+        self.y_vel = -self.veloc * m.cos(self.angle)
+
+    def DrawAuxiliaryLines(self, screen):
+        lenght = 500
+        n1_x = self.x_pos + lenght * m.sin(self.angle)
+        n1_y = self.y_pos + lenght * m.cos(self.angle)
+        n2_x = self.x_pos - lenght * m.sin(self.angle)
+        n2_y = self.y_pos - lenght * m.cos(self.angle)
+        t1_x = self.x_pos + lenght * m.sin(self.angle - m.pi / 2)
+        t1_y = self.y_pos + lenght * m.cos(self.angle - m.pi / 2)
+        t2_x = self.x_pos - lenght * m.sin(self.angle - m.pi / 2)
+        t2_y = self.y_pos - lenght * m.cos(self.angle - m.pi / 2)
+
+        pygame.draw.line(screen, (255, 255, 0), (n1_x, n1_y), (n2_x, n2_y))
+        pygame.draw.line(screen, (255, 255, 0), (t1_x, t1_y), (t2_x, t2_y))
 
 
 class FPS:
@@ -399,6 +445,69 @@ class score:
         self.value += self.ShipColisionScore
 
 
+class NEAT_input:
+    def __init__(self, settings):
+        self.input = [0] * 8
+        """Input:
+        0 - Distância a frente
+        1 - Distância atrás
+        3 - Distância a direita
+        4 - Distância a esquerda
+        5 - Ângulo da nave
+        6 - Velocidade da nave
+        7 - Rotação da nave 
+        """
+        self.settings = settings
+
+    def calcInput(self, nave, asters):
+        self.input[5] = nave.angle
+        self.input[6] = nave.veloc
+        self.input[7] = nave.ang_vel
+        self.Asters = asters
+        self.nave = nave
+        IDs_inTheWay = []
+
+        asters_posXline = []
+        asters_negXline = []
+        asters_posYline = []
+        asters_negYline = []
+        for aster in self.Asters:
+            aster.ChangeToShipPersp(nave)
+            size = aster.GetSize()
+            x = aster.x_pos
+            y = aster.y_pos
+            if abs(x) < size and y > 0:
+                asters_posYline.append(aster)
+            if abs(x) < size and y <= 0:
+                asters_negYline.append(aster)
+            if abs(y) < size and x > 0:
+                asters_posXline.append(aster)
+            if abs(y) < size and x <= 0:
+                asters_negXline.append(aster)
+            aster.ReturnPersp()
+
+        asters_lists = [asters_posYline, asters_negYline,
+                        asters_posXline, asters_negXline]
+        i = 0
+        for asters in asters_lists:
+            if len(asters) != 0:
+                distances = []
+                for aster in asters:
+                    distance = m.sqrt((aster.x_pos - nave.x_pos)
+                                      ** 2 + (aster.y_pos - nave.y_pos)**2)
+                    distances.append(distance)
+
+                index = np.argmin(distances)
+                IDs_inTheWay.append(asters[index].ID)
+                self.input[i] = round(np.min(distances),2)
+            else:
+                self.input[i] = 10000
+
+            i += 1
+
+        return IDs_inTheWay
+
+
 def Limit(value, min, max):
     x = value
     if x < min:
@@ -427,6 +536,7 @@ class Game:
         self.Nave.SetConfig(self.settings)
         self.FPS = FPS(self.settings.colors.get("blue"))
         self.score = score(self.settings.colors.get("blue"))
+        self.NEAT_input = NEAT_input(self.settings)
 
     def init_game(self):
         pygame.init()
@@ -452,7 +562,7 @@ class Game:
         # Analisando teclas pressionadas
         keys = np.array(pygame.key.get_pressed())
         PressedKeys = np.where(keys == 1)[0]
-        #print(PressedKeys)
+        # print(PressedKeys)
         for key in PressedKeys:
             if key == 119:
                 self.Nave.Acelerate("ver", "-")
@@ -476,6 +586,8 @@ class Game:
                 self.Nave.breaking()
 
     def update(self):
+        self.ManagerAsters.RefreshAll()
+
         # Tratando colisões
         shoots = self.ManagerShoots.shoots
         destroyed = self.ManagerAsters.CheckForColision(shoots)
@@ -495,10 +607,14 @@ class Game:
         self.ManagerAsters.RandomCreation()
         self.ManagerAsters.updateAll()
 
+        IDs = self.NEAT_input.calcInput(self.Nave, self.ManagerAsters.asters)
+        self.ManagerAsters.MarkInTarget(IDs)
+
     def draw(self):
         self.screen.fill(self.settings.colors.get("black"))
         self.ManagerAsters.drawAll(self.screen)
         self.Nave.draw(self.screen)
+        self.Nave.DrawAuxiliaryLines(self.screen)
         self.ManagerShoots.drawAll(self.screen)
 
         self.clock.tick(60)
