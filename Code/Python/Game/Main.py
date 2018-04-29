@@ -1,4 +1,4 @@
-from AsterGameClasses import *
+from AsterGameClasses import Game
 
 AsterGame = Game()
 AsterGame.init_classes()

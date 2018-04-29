@@ -12,7 +12,9 @@ class GameSettings:
         self.SCREEN_WIDTH = 700
         self.SCREEN_HEIGHT = 500
         self.colors = {"black": (0, 0, 0), "white": (
-            255, 255, 255), "red": (255, 0, 0)}
+            255, 255, 255), "red": (255, 0, 0), "blue": (0, 0, 255)}
+        pygame.font.init()
+        self.font = pygame.font.SysFont('Comic Sans MS', 20)
 
 
 class AsterManage:
@@ -79,6 +81,7 @@ class AsterManage:
         del self.asters[index]
 
     def CheckForColision(self, Shoots):
+        destroyed = False
         for aster in self.asters:
             for shoot in Shoots:
                 distance = m.sqrt((shoot.x_pos - aster.x_pos)
@@ -86,6 +89,22 @@ class AsterManage:
                 if distance <= aster.GetSize():
                     shoot.delete()
                     aster.split()
+                    destroyed = True
+                    break
+
+        return destroyed
+
+    def CheckForShipColision(self, coords):
+        colision = False
+        for aster in self.asters:
+            for coord in coords:
+                distance = m.sqrt(
+                    (aster.x_pos - coord[0])**2 + (aster.y_pos - coord[1])**2)
+                if distance <= aster.GetSize():
+                    colision = True
+                    break
+
+        return colision
 
 
 class Aster:
@@ -155,11 +174,15 @@ class ShootManage:
         self.settings = config
 
     def shoot(self, Nave):
+        shooted = False
         CurrentTime = time.time()
         if (CurrentTime - self.lastTime) > self.__minTimeShoots:
             NewShoot = Shoot(Nave, self)
             self.shoots.append(NewShoot)
             self.lastTime = CurrentTime
+            shooted = True
+
+        return shooted
 
     def updateAll(self):
         for shoot in self.shoots:
@@ -296,6 +319,69 @@ class SpaceShip:
             "white"), self.GetCoords())
 
 
+class FPS:
+    def __init__(self, color):
+        self.t1 = time.time()
+        self.i = 0
+        self.sumFPS = 0
+        self.lastFPS = 0
+        pygame.font.init()
+        self.font = pygame.font.SysFont('Comic Sans MS', 20)
+        self.color = color
+
+    def __call__(self, screen):
+        t2 = time.time()
+
+        try:
+            FPS = 1 / (t2 - self.t1)
+        except ZeroDivisionError:
+            FPS = 0
+
+        self.t1 = t2
+        self.i += 1
+        self.sumFPS += FPS
+
+        text = self.font.render(
+            str(round(self.lastFPS, 2)) + " FPS", False, self.color)
+        screen.blit(text, (0, 0))
+
+        if self.i == 60:
+            self.lastFPS = self.sumFPS / self.i
+
+            self.i = 0
+            self.sumFPS = 0
+
+class score:
+    def __init__(self, color):
+        self.TimeScore = 0.01
+        self.ShootScore = -1
+        self.DestroyScore = 10
+        self.value_to_show = 0
+        self.value = 0
+        self.i = 0
+        pygame.font.init()
+        self.font = pygame.font.SysFont('Comic Sans MS', 20)
+        self.color = color
+
+    def __call__(self, screen):
+        self.value += self.TimeScore
+        self.i += 1
+
+        text = self.font.render("SCORE: " + 
+            str(round(self.value_to_show, 2)), False, self.color)
+        screen.blit(text, (0, 30))
+
+        if self.i == 6:
+            self.i = 0
+            self.value_to_show = self.value
+
+    def shoot(self):
+        self.value += self.ShootScore
+
+    def destroy(self):
+        self.value += self.DestroyScore
+
+
 def Limit(value, min, max):
     x = value
     if x < min:
@@ -311,6 +397,8 @@ def Limit(value, min, max):
 class Game:
     def __init__(self):
         print("Iniciando ambiente")
+        self.done = False
+        self.GameOver = False
 
     def init_classes(self):
         self.settings = GameSettings()
@@ -320,7 +408,9 @@ class Game:
         self.ManagerShoots.SetConfig(self.settings)
         self.Nave = SpaceShip()
         self.Nave.SetConfig(self.settings)
-
+        self.FPS = FPS(self.settings.colors.get("blue"))
+        self.score = score(self.settings.colors.get("blue"))
+        
     def init_game(self):
         pygame.init()
 
@@ -331,19 +421,16 @@ class Game:
         pygame.display.set_caption("Asteroids AI")
 
         # Critério de parada
-        global done
-        done = False
+        self.done = False
 
         # Inicialização
         self.clock = pygame.time.Clock()
-        self.t1 = time.time()
 
     def events(self):
         # Analisando os eventos
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                global done
-                done = True
+                self.done = True
 
         # Analisando teclas pressionadas
         keys = np.array(pygame.key.get_pressed())
@@ -363,12 +450,20 @@ class Game:
             elif key == 276:
                 self.Nave.Rotate("+")
             elif key == 273:
-                self.ManagerShoots.shoot(self.Nave)
+                shooted = self.ManagerShoots.shoot(self.Nave)
+                if shooted:
+                    self.score.shoot()
 
     def update(self):
         # Tratando colisões
         shoots = self.ManagerShoots.shoots
-        self.ManagerAsters.CheckForColision(shoots)
+        destroyed = self.ManagerAsters.CheckForColision(shoots)
+        if destroyed:
+            self.score.destroy()
+        colision = self.ManagerAsters.CheckForShipColision(
+            self.Nave.GetCoords())
+        if colision:
+            self.GameOver = True
 
         self.Nave.update()
         self.ManagerShoots.updateAll()
@@ -383,22 +478,26 @@ class Game:
         self.ManagerShoots.drawAll(self.screen)
 
         self.clock.tick(60)
+        self.FPS(self.screen)
+        self.score(self.screen)
+
         pygame.display.flip()
 
-        try:
-            FPS = 1 / (time.time() - self.t1)
-        except ZeroDivisionError:
-            FPS = 0
-
-        self.t1 = time.time()
-
     def loop(self):
-        while not done:
-
-            self.events()
-            self.update()
-            self.draw()
+        while not self.done:
+            if self.GameOver:
+                self.screen.fill(self.settings.colors.get("black"))
+                text = self.settings.font.render(
+                    "GAME OVER", False, self.settings.colors.get("white"))
+                self.screen.blit(
+                    text, (self.settings.SCREEN_WIDTH / 2, self.settings.SCREEN_HEIGHT / 2))
+                pygame.display.flip()
+                time.sleep(2)
+                break
+            else:
+                self.events()
+                self.update()
+                self.draw()
 
     def end(self):
         pygame.quit()
-
