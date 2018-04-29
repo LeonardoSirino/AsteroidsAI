@@ -499,13 +499,13 @@ class NEAT_input:
 
                 index = np.argmin(distances)
                 IDs_inTheWay.append(asters[index].ID)
-                self.input[i] = round(np.min(distances),2)
+                self.input[i] = round(np.min(distances), 2)
             else:
                 self.input[i] = 10000
 
             i += 1
 
-        return IDs_inTheWay
+        return (IDs_inTheWay, self.input)
 
 
 def Limit(value, min, max):
@@ -553,6 +553,10 @@ class Game:
         # Inicialização
         self.clock = pygame.time.Clock()
 
+    def setPlayer(self, Player):
+        self.player = Player
+        self.player.init()
+
     def events(self):
         # Analisando os eventos
         for event in pygame.event.get():
@@ -585,9 +589,27 @@ class Game:
             elif key == 122:
                 self.Nave.breaking()
 
-    def update(self):
-        self.ManagerAsters.RefreshAll()
+    def ExternalControl(self):
+        input = self.player.move(self.lastOutput)
 
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.done = True
+
+        if input[0] > 0.5:
+            self.Nave.Rotate("-")
+        if input[1] > 0.5:
+            self.Nave.Rotate("+")
+        if input[2] > 0.5:
+            shooted = self.ManagerShoots.shoot(self.Nave)
+            if shooted:
+                self.score.shoot()
+        if input[3] > 0.5:
+            self.Nave.push()
+        if input[4] > 0.5:
+            self.Nave.breaking()
+
+    def update(self):
         # Tratando colisões
         shoots = self.ManagerShoots.shoots
         destroyed = self.ManagerAsters.CheckForColision(shoots)
@@ -607,14 +629,18 @@ class Game:
         self.ManagerAsters.RandomCreation()
         self.ManagerAsters.updateAll()
 
-        IDs = self.NEAT_input.calcInput(self.Nave, self.ManagerAsters.asters)
-        self.ManagerAsters.MarkInTarget(IDs)
+    def generateOutput(self):
+
+        output = self.NEAT_input.calcInput(
+            self.Nave, self.ManagerAsters.asters)
+        self.ManagerAsters.MarkInTarget(output[0])
+        self.lastOutput = output[1]
 
     def draw(self):
         self.screen.fill(self.settings.colors.get("black"))
         self.ManagerAsters.drawAll(self.screen)
         self.Nave.draw(self.screen)
-        self.Nave.DrawAuxiliaryLines(self.screen)
+        #self.Nave.DrawAuxiliaryLines(self.screen)
         self.ManagerShoots.drawAll(self.screen)
 
         self.clock.tick(60)
@@ -636,6 +662,24 @@ class Game:
                 break
             else:
                 self.events()
+                self.update()
+                self.draw()
+
+    def loopExternalUser(self):
+        while not self.done:
+            if self.GameOver:
+                self.screen.fill(self.settings.colors.get("black"))
+                text = self.settings.font.render(
+                    "GAME OVER", False, self.settings.colors.get("white"))
+                self.screen.blit(
+                    text, (self.settings.SCREEN_WIDTH / 2, self.settings.SCREEN_HEIGHT / 2))
+                pygame.display.flip()
+                time.sleep(2)
+                break
+            else:
+                self.ManagerAsters.RefreshAll()
+                self.generateOutput()
+                self.ExternalControl()
                 self.update()
                 self.draw()
 
