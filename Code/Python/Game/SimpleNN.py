@@ -1,6 +1,33 @@
 from AsterGameClasses import Game, GameSettings
 import random
 import numpy as np
+import matplotlib.pyplot as plt
+
+plt.ion()
+
+
+class DynamicUpdate():
+    def on_launch(self):
+        # Set up plot
+        self.figure, self.ax = plt.subplots()
+        self.lines, = self.ax.plot([], [], '-')
+        # Autoscale on unknown axis and known lims on the other
+        self.ax.set_autoscaley_on(True)
+        #self.ax.set_xlim(self.min_x, self.max_x)
+        plt.xlabel("Gerações")
+        plt.ylabel("Melhor Score")
+        plt.title("NN for Asteroids Game")
+
+    def on_running(self, xdata, ydata):
+        # Update data (with the new _and_ the old points)
+        self.lines.set_xdata(xdata)
+        self.lines.set_ydata(ydata)
+        # Need both of these in order to rescale
+        self.ax.relim()
+        self.ax.autoscale_view()
+        # We need to draw *and* flush
+        self.figure.canvas.draw()
+        self.figure.canvas.flush_events()
 
 
 class AGPlayer:
@@ -103,7 +130,7 @@ def Selection(players, size):
 
 config = GameSettings()
 config.GameOverMode = "GameOverExternal"
-config.FPS = 60
+config.FPS = 2000
 player = AGPlayer()
 player.initializeWeights()
 players = player.GenChildren(5, 0.8)
@@ -111,6 +138,9 @@ players = player.GenChildren(5, 0.8)
 AsterGame = Game()
 AsterGame.init_classes()
 AsterGame.setConfig(config)
+
+ScoreGraph = DynamicUpdate()
+ScoreGraph.on_launch()
 
 
 def main(player, Info):
@@ -126,8 +156,13 @@ def main(player, Info):
         return [False, FinalResult]
 
 
-Generations = 3
+Generations = 100
 alpha = 0.9
+
+gens = []
+scores = []
+
+file = open("data.txt", mode="w")
 for gen in range(1, Generations + 1):
     print("Iniciando geração: " + str(gen))
     i = 1
@@ -139,12 +174,22 @@ for gen in range(1, Generations + 1):
         if result[0]:
             break
     alive_players = Selection(players, 3)
-    players = []
+    file.write("Melhor elemento da geração " + str(gen) + "\n--- W1\n")
+    file.write(np.array_str(alive_players[-1].w1))
+    file.write("\n\n --- W2\n")
+    file.write(np.array_str(alive_players[-1].w2))
+    file.write("\n\n\n")
+    players = alive_players
     for player in alive_players:
         children = player.GenChildren(5, alpha)
         players += children
 
     alpha *= 0.9
 
+    gens.append(gen)
+    scores.append(alive_players[-1].Score)
 
+    ScoreGraph.on_running(gens, scores)
+
+file.close()
 AsterGame.end()

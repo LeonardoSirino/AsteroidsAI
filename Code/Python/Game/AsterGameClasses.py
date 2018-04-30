@@ -438,7 +438,7 @@ class score:
     def __init__(self, color):
         self.TimeScore = 0.01
         self.ShootScore = -1
-        self.DestroyScore = 10
+        self.DestroyScore = 5
         self.ShipColisionScore = -50
         self.value_to_show = 0
         self.value = 0
@@ -652,6 +652,10 @@ class Game:
                     self.abort = True
                     self.done = True
                     self.GameOver = "GameOverExternal"
+                elif event.key == pygame.K_s:
+                    self.settings.FPS = 60
+                elif event.key == pygame.K_f:
+                    self.settings.FPS = 2000
 
         if input[0] > 0.5:
             self.Nave.Rotate("-")
