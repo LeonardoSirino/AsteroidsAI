@@ -453,7 +453,6 @@ class score:
         self.value_to_show = 0
 
     def __call__(self, screen):
-        self.value += self.TimeScore
         self.i += 1
 
         text = self.font.render("SCORE: " +
@@ -463,6 +462,9 @@ class score:
         if self.i == 6:
             self.i = 0
             self.value_to_show = self.value
+
+    def timeScore(self):
+        self.value += self.TimeScore
 
     def shoot(self):
         self.value += self.ShootScore
@@ -476,7 +478,7 @@ class score:
 
 class NEAT_input:
     def __init__(self, settings):
-        self.input = [0] * 8
+        self.input = [0] * 10
         """Input:
         0 - Distância a frente
         1 - Distância atrás
@@ -485,6 +487,8 @@ class NEAT_input:
         5 - Ângulo da nave
         6 - Velocidade da nave
         7 - Rotação da nave
+        8 - Distância até a o limite superior
+        9 - Distância até o limite lateral
         """
         self.settings = settings
 
@@ -492,6 +496,8 @@ class NEAT_input:
         self.input[5] = nave.angle / (2 * m.pi)
         self.input[6] = nave.veloc / self.settings.MaxShipVel
         self.input[7] = nave.ang_vel / self.settings.MaxShipAngVel
+        self.input[8] = (self.settings.SCREEN_HEIGHT - nave.y_pos) / self.settings.SCREEN_HEIGHT
+        self.input[9] = (self.settings.SCREEN_WIDTH - nave.x_pos) / self.settings.SCREEN_WIDTH
         NormalizerLenght = m.sqrt(
             self.settings.SCREEN_HEIGHT**2 + self.settings.SCREEN_WIDTH**2)
         self.Asters = asters
@@ -659,6 +665,7 @@ class Game:
                     self.settings.FPS = 60
                 elif event.key == pygame.K_h:
                     self.showGame = False
+                    self.settings.FPS = 100000
                 elif event.key == pygame.K_f:
                     self.showGame = True
                     self.settings.FPS = 240
@@ -747,6 +754,7 @@ class Game:
                 self.events()
                 self.update()
                 self.draw()
+                self.score.timeScore()
                 pygame.display.flip()
 
     def loopExternalUser(self):
@@ -772,6 +780,7 @@ class Game:
                 self.generateOutput()
                 self.ExternalControl()
                 self.update()
+                self.score.timeScore()
                 if self.showGame:
                     self.draw()
                     self.ShowInfo()

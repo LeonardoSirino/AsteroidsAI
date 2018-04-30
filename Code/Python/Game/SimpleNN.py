@@ -31,18 +31,21 @@ class DynamicUpdate():
 
 
 class AGPlayer:
+    ID = 0
     Neurons = 20 + 1
-    NumberInputs = 8 + 1
+    NumberInputs = 10 + 1
     NumberOutputs = 5
     Mw1 = 1 / 9
-    Dw1 = Mw1 / 16
+    Dw1 = Mw1 / 1
     Mw2 = 1 / (Neurons + 1)
-    Dw2 = Mw2 / 16
+    Dw2 = Mw2 / 1
 
     def __init__(self):
         self.name = "random"
         self.w1 = np.zeros((AGPlayer.Neurons - 1, AGPlayer.NumberInputs))
         self.w2 = np.zeros((AGPlayer.NumberOutputs, AGPlayer.Neurons))
+        self.ID = AGPlayer.ID
+        AGPlayer.ID += 1
 
     def RandomVariation(self):
         RV1 = - AGPlayer.Dw1 + 2 * AGPlayer.Dw1 * \
@@ -114,19 +117,30 @@ class AGPlayer:
 
 
 class Info:
-    def __init__(self, i, max_i, gen):
+    def __init__(self, i, max_i, gen, tries):
         self.i = i
         self.max_i = max_i
         self.gen = gen
+        self.tries = tries
 
 
 def Selection(players, size):
     sorted_players = sorted(players, key=lambda player: player.Score)
-    print("Pior score: " + str(sorted_players[0].Score))
-    print("Melhor score: " + str(sorted_players[-1].Score))
+    print("Pior player -- " + PlayerLog(sorted_players[0]))
+    print("Melhor player -- " + PlayerLog(sorted_players[-1]))
     alive_players = sorted_players[len(players) - size:]
-    print(len(alive_players))
     return alive_players
+
+
+def PlayerLog(player):
+    score = round(player.Score, 2)
+    W1m = round(np.mean(player.w1), 2)
+    W1max = round(np.max(player.w1), 2)
+    W2m = round(np.mean(player.w2), 2)
+    W2max = round(np.max(player.w2), 2)
+    log = "ID " + str(player.ID) + "  Score: " + str(score) + "  W1m: " + str(W1m) + "  W2m: " + \
+        str(W2m) + "  W1max: " + str(W1max) + "  W2max: " + str(W2max)
+    return log
 
 
 config = GameSettings()
@@ -145,20 +159,26 @@ ScoreGraph.on_launch()
 
 
 def main(player, Info):
-    AsterGame.init_game()
-    AsterGame.set_AG_info(str(Info.gen), str(Info.i) + "/" + str(Info.max_i))
-    AsterGame.setPlayer(player)
-    AsterGame.loopExternalUser()
-    if AsterGame.abort:
-        AsterGame.end()
-        return [True, 0]
-    else:
-        FinalResult = AsterGame.reset()
-        return [False, FinalResult]
+    results = []
+    for i in range(0, Info.tries):
+        AsterGame.init_game()
+        AsterGame.set_AG_info(str(Info.gen), str(
+            Info.i) + "/" + str(Info.max_i))
+        AsterGame.setPlayer(player)
+        AsterGame.loopExternalUser()
+        if AsterGame.abort:
+            AsterGame.end()
+            return [True, 0]
+        else:
+            results.append(AsterGame.reset())
+
+    FinalResult = np.min(results)
+    return [False, FinalResult]
 
 
-Generations = 10000
-alpha = 0.99
+Generations = 5000
+tries = 5
+alpha = 0.90
 
 gens = []
 scores = []
@@ -168,7 +188,7 @@ for gen in range(1, Generations + 1):
     print("Iniciando geração: " + str(gen))
     i = 1
     for player in players:
-        infoPlayer = Info(i, len(players), gen)
+        infoPlayer = Info(i, len(players), gen, tries)
         result = main(player, infoPlayer)
         player.setScore(result[1])
         i += 1
@@ -190,7 +210,7 @@ for gen in range(1, Generations + 1):
     mutated = base_player.GenChildren(3, 0.8)
     players += mutated
 
-    alpha *= 0.99
+    alpha *= 0.95
 
     gens.append(gen)
     scores.append(alive_players[-1].Score)
