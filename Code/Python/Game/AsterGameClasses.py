@@ -16,7 +16,15 @@ class GameSettings:
             255, 255, 255), "red": (255, 0, 0), "blue": (0, 0, 255), "green": (0, 255, 0)}
         pygame.font.init()
         self.font = pygame.font.SysFont('Comic Sans MS', 20)
-        self.GameOverIfColide = False
+        self.FPS = 60
+        self.MaxShipVel = 5
+        self.MaxShipAngVel = 0.1
+        self.GameOverMode = "NoGameOver"
+        """Game over modes:
+        NoGameOver - Apenas se desconta pontos do score
+        GameOverUser - Game Over para o usuário, espera de alguns segundos
+        GameOverExternal - Game Over para controle externo, sem espera
+        """
 
 
 class AsterManage:
@@ -27,6 +35,10 @@ class AsterManage:
         self.maxSize = 30
         self.maxDivs = 2
         self.asters = []
+
+    def clear(self):
+        self.asters = []
+        Aster.class_ID = 0
 
     def SetConfig(self, config):
         self.settings = config
@@ -201,6 +213,10 @@ class ShootManage:
         self.shoots = []
         self.lastTime = time.time() - self.__minTimeShoots
 
+    def clear(self):
+        self.shoots = []
+        Shoot.class_ID = 0
+
     def SetConfig(self, config):
         self.settings = config
 
@@ -287,12 +303,16 @@ class SpaceShip:
         self.__side = 25
         self.__innerAngle = m.radians(15)
         self.__acel = 2
-        self.__maxVel = 5
         self.__angAcel = 0.05
-        self.__maxAngVel = 0.1
 
     def SetConfig(self, config):
         self.settings = config
+        self.x_pos = self.settings.SCREEN_WIDTH / 2
+        self.y_pos = self.settings.SCREEN_HEIGHT / 2
+        self.__maxVel = self.settings.MaxShipVel
+        self.__maxAngVel = self.settings.MaxShipAngVel
+
+    def clear(self):
         self.x_pos = self.settings.SCREEN_WIDTH / 2
         self.y_pos = self.settings.SCREEN_HEIGHT / 2
 
@@ -346,6 +366,10 @@ class SpaceShip:
         self.y_pos += self.y_vel
         self.y_pos = Limit(self.y_pos, 0, self.settings.SCREEN_HEIGHT)
         self.angle += self.ang_vel
+        if self.angle > 2 * m.pi:
+            self.angle -= 2 * m.pi
+        elif self.angle < - 2 * m.pi:
+            self.angle += m.pi
 
     def draw(self, screen):
         pygame.draw.polygon(screen, self.settings.colors.get(
@@ -423,6 +447,10 @@ class score:
         self.font = pygame.font.SysFont('Calibri', 20, bold=1)
         self.color = color
 
+    def clear(self):
+        self.value = 0
+        self.value_to_show = 0
+
     def __call__(self, screen):
         self.value += self.TimeScore
         self.i += 1
@@ -455,14 +483,15 @@ class NEAT_input:
         4 - Distância a esquerda
         5 - Ângulo da nave
         6 - Velocidade da nave
-        7 - Rotação da nave 
+        7 - Rotação da nave
         """
         self.settings = settings
 
     def calcInput(self, nave, asters):
-        self.input[5] = nave.angle
-        self.input[6] = nave.veloc
-        self.input[7] = nave.ang_vel
+        self.input[5] = nave.angle / (2 * m.pi)
+        self.input[6] = nave.veloc / self.settings.MaxShipVel
+        self.input[7] = nave.ang_vel / self.settings.MaxShipAngVel
+        NormalizerLenght = m.sqrt(self.settings.SCREEN_HEIGHT**2 + self.settings.SCREEN_WIDTH**2)
         self.Asters = asters
         self.nave = nave
         IDs_inTheWay = []
@@ -499,9 +528,9 @@ class NEAT_input:
 
                 index = np.argmin(distances)
                 IDs_inTheWay.append(asters[index].ID)
-                self.input[i] = round(np.min(distances), 2)
+                self.input[i] = np.min(distances) / NormalizerLenght
             else:
-                self.input[i] = 10000
+                self.input[i] = 1
 
             i += 1
 
@@ -524,7 +553,7 @@ class Game:
     def __init__(self):
         print("Iniciando ambiente")
         self.done = False
-        self.GameOver = False
+        self.GameOver = "NoGameOver"
 
     def init_classes(self):
         self.settings = GameSettings()
@@ -538,6 +567,9 @@ class Game:
         self.score = score(self.settings.colors.get("blue"))
         self.NEAT_input = NEAT_input(self.settings)
 
+    def setConfig(self, config):
+        self.settings = config
+
     def init_game(self):
         pygame.init()
 
@@ -546,6 +578,15 @@ class Game:
         self.screen = pygame.display.set_mode(size)
 
         pygame.display.set_caption("Asteroids AI")
+
+        from ctypes import windll
+        SetWindowPos = windll.user32.SetWindowPos
+
+        NOSIZE = 1
+        NOMOVE = 2
+        zorder = -1
+        hwnd = pygame.display.get_wm_info()['window']
+        SetWindowPos(hwnd, zorder, 0, 0, 0, 0, NOMOVE | NOSIZE)
 
         # Critério de parada
         self.done = False
@@ -618,10 +659,10 @@ class Game:
         colision = self.ManagerAsters.CheckForShipColision(
             self.Nave.GetCoords())
         if colision:
-            if self.settings.GameOverIfColide:
-                self.GameOver = True
-            else:
+            if self.settings.GameOverMode == "NoGameOver":
                 self.score.colision()
+            else:
+                self.GameOver = self.settings.GameOverMode
 
         self.Nave.update()
         self.ManagerShoots.updateAll()
@@ -640,10 +681,10 @@ class Game:
         self.screen.fill(self.settings.colors.get("black"))
         self.ManagerAsters.drawAll(self.screen)
         self.Nave.draw(self.screen)
-        #self.Nave.DrawAuxiliaryLines(self.screen)
+        # self.Nave.DrawAuxiliaryLines(self.screen)
         self.ManagerShoots.drawAll(self.screen)
 
-        self.clock.tick(60)
+        self.clock.tick(self.settings.FPS)
         self.FPS(self.screen)
         self.score(self.screen)
 
@@ -651,7 +692,8 @@ class Game:
 
     def loop(self):
         while not self.done:
-            if self.GameOver:
+            if self.GameOver == "GameOverUser":
+                print("Game over do usuário")
                 self.screen.fill(self.settings.colors.get("black"))
                 text = self.settings.font.render(
                     "GAME OVER", False, self.settings.colors.get("white"))
@@ -660,6 +702,15 @@ class Game:
                 pygame.display.flip()
                 time.sleep(2)
                 break
+
+            elif self.GameOver == "GameOverExternal":
+                print("Game over externo")
+                self.screen.fill(self.settings.colors.get("black"))
+                text = self.settings.font.render(
+                    "GAME OVER", False, self.settings.colors.get("white"))
+                self.screen.blit()
+                break
+
             else:
                 self.events()
                 self.update()
@@ -667,7 +718,7 @@ class Game:
 
     def loopExternalUser(self):
         while not self.done:
-            if self.GameOver:
+            if self.GameOver == "GameOverUser":
                 self.screen.fill(self.settings.colors.get("black"))
                 text = self.settings.font.render(
                     "GAME OVER", False, self.settings.colors.get("white"))
@@ -676,6 +727,13 @@ class Game:
                 pygame.display.flip()
                 time.sleep(2)
                 break
+
+            elif self.GameOver == "GameOverExternal":
+                self.screen.fill(self.settings.colors.get("black"))
+                text = self.settings.font.render(
+                    "GAME OVER", False, self.settings.colors.get("white"))
+                break
+
             else:
                 self.ManagerAsters.RefreshAll()
                 self.generateOutput()
@@ -685,3 +743,13 @@ class Game:
 
     def end(self):
         pygame.quit()
+
+    def reset(self):
+        FinalResult = self.score.value
+        print(FinalResult)
+        self.Nave.clear()
+        self.ManagerAsters.clear()
+        self.ManagerShoots.clear()
+        self.score.clear()
+        self.GameOver = "NoGameOver"
+        self.done = False

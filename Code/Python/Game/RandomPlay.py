@@ -1,4 +1,4 @@
-from AsterGameClasses import Game
+from AsterGameClasses import Game, GameSettings
 import random
 
 
@@ -17,7 +17,7 @@ class RandomPlayer:
         3 - Push
         4 - Break
         """
-
+        # print(output)
         input = [0] * 5
         k = 0
         for i in input:
@@ -27,18 +27,22 @@ class RandomPlayer:
         return input
 
 
+config = GameSettings()
+config.GameOverMode = "GameOverExternal"
+config.FPS = 60
 player = RandomPlayer()
-
 AsterGame = Game()
 AsterGame.init_classes()
+AsterGame.setConfig(config)
 
+for i in range(1, 10):
+    def main():
+        AsterGame.init_game()
+        AsterGame.setPlayer(player)
+        AsterGame.loopExternalUser()
+        AsterGame.reset()
 
-def main():
-    AsterGame.init_game()
-    AsterGame.setPlayer(player)
-    AsterGame.loopExternalUser()
-    AsterGame.end()
+    if __name__ == "__main__":
+        main()
 
-
-if __name__ == "__main__":
-    main()
+AsterGame.end()
