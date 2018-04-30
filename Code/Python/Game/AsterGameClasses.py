@@ -496,8 +496,10 @@ class NEAT_input:
         self.input[5] = nave.angle / (2 * m.pi)
         self.input[6] = nave.veloc / self.settings.MaxShipVel
         self.input[7] = nave.ang_vel / self.settings.MaxShipAngVel
-        self.input[8] = (self.settings.SCREEN_HEIGHT - nave.y_pos) / self.settings.SCREEN_HEIGHT
-        self.input[9] = (self.settings.SCREEN_WIDTH - nave.x_pos) / self.settings.SCREEN_WIDTH
+        self.input[8] = (self.settings.SCREEN_HEIGHT -
+                         nave.y_pos) / self.settings.SCREEN_HEIGHT
+        self.input[9] = (self.settings.SCREEN_WIDTH -
+                         nave.x_pos) / self.settings.SCREEN_WIDTH
         NormalizerLenght = m.sqrt(
             self.settings.SCREEN_HEIGHT**2 + self.settings.SCREEN_WIDTH**2)
         self.Asters = asters
@@ -584,9 +586,10 @@ class Game:
     def setConfig(self, config):
         self.settings = config
 
-    def set_AG_info(self, gen, spec):
+    def set_AG_info(self, gen, spec, tentativa):
         self.generation = gen
         self.specimen = spec
+        self.tentativa = tentativa
 
     def init_game(self):
         pygame.init()
@@ -726,8 +729,11 @@ class Game:
             "Geração: " + self.generation, False, self.settings.colors.get("blue"))
         text2 = self.font.render(
             "Ser: " + self.specimen, False, self.settings.colors.get("blue"))
+        text3 = self.font.render(
+            "Tentativa: " + self.tentativa, False, self.settings.colors.get("blue"))
         self.screen.blit(text1, (0, 60))
         self.screen.blit(text2, (0, 90))
+        self.screen.blit(text3, (0, 120))
 
     def loop(self):
         while not self.done:

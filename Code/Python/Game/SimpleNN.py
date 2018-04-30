@@ -163,7 +163,7 @@ def main(player, Info):
     for i in range(0, Info.tries):
         AsterGame.init_game()
         AsterGame.set_AG_info(str(Info.gen), str(
-            Info.i) + "/" + str(Info.max_i))
+            Info.i) + "/" + str(Info.max_i), str(i + 1) + "/" + str(Info.tries))
         AsterGame.setPlayer(player)
         AsterGame.loopExternalUser()
         if AsterGame.abort:
