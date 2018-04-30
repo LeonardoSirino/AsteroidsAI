@@ -35,14 +35,23 @@ AsterGame = Game()
 AsterGame.init_classes()
 AsterGame.setConfig(config)
 
-for i in range(1, 10):
-    def main():
-        AsterGame.init_game()
-        AsterGame.setPlayer(player)
-        AsterGame.loopExternalUser()
-        AsterGame.reset()
 
-    if __name__ == "__main__":
-        main()
+def main():
+    AsterGame.init_game()
+    AsterGame.set_AG_info(str(1), str(i) + "/10")
+    AsterGame.setPlayer(player)
+    AsterGame.loopExternalUser()
+    if AsterGame.abort:
+        AsterGame.end()
+        return [True, 0]
+    else:
+        FinalResult = AsterGame.reset()
+        return [False, FinalResult]
+
+
+for i in range(1, 11):
+    result = main()
+    if result[0]:
+        break
 
 AsterGame.end()

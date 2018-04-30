@@ -369,7 +369,7 @@ class SpaceShip:
         if self.angle > 2 * m.pi:
             self.angle -= 2 * m.pi
         elif self.angle < - 2 * m.pi:
-            self.angle += m.pi
+            self.angle += 2 * m.pi
 
     def draw(self, screen):
         pygame.draw.polygon(screen, self.settings.colors.get(
@@ -491,7 +491,8 @@ class NEAT_input:
         self.input[5] = nave.angle / (2 * m.pi)
         self.input[6] = nave.veloc / self.settings.MaxShipVel
         self.input[7] = nave.ang_vel / self.settings.MaxShipAngVel
-        NormalizerLenght = m.sqrt(self.settings.SCREEN_HEIGHT**2 + self.settings.SCREEN_WIDTH**2)
+        NormalizerLenght = m.sqrt(
+            self.settings.SCREEN_HEIGHT**2 + self.settings.SCREEN_WIDTH**2)
         self.Asters = asters
         self.nave = nave
         IDs_inTheWay = []
@@ -554,6 +555,11 @@ class Game:
         print("Iniciando ambiente")
         self.done = False
         self.GameOver = "NoGameOver"
+        self.generation = ""
+        self.specimen = ""
+        self.abort = False
+        pygame.font.init()
+        self.font = pygame.font.SysFont('Calibri', 20, bold=1)
 
     def init_classes(self):
         self.settings = GameSettings()
@@ -570,8 +576,13 @@ class Game:
     def setConfig(self, config):
         self.settings = config
 
+    def set_AG_info(self, gen, spec):
+        self.generation = gen
+        self.specimen = spec
+
     def init_game(self):
         pygame.init()
+        self.score.clear()
 
         # Criação da tela
         size = [self.settings.SCREEN_WIDTH, self.settings.SCREEN_HEIGHT]
@@ -636,6 +647,11 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.done = True
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    self.abort = True
+                    self.done = True
+                    self.GameOver = "GameOverExternal"
 
         if input[0] > 0.5:
             self.Nave.Rotate("-")
@@ -688,7 +704,11 @@ class Game:
         self.FPS(self.screen)
         self.score(self.screen)
 
-        pygame.display.flip()
+    def ShowInfo(self):
+        text1 = self.font.render("Geração: " + self.generation, False, self.settings.colors.get("blue"))
+        text2 = self.font.render("Ser: " + self.specimen, False, self.settings.colors.get("blue"))
+        self.screen.blit(text1, (0, 60))
+        self.screen.blit(text2, (0, 90))
 
     def loop(self):
         while not self.done:
@@ -715,6 +735,7 @@ class Game:
                 self.events()
                 self.update()
                 self.draw()
+                pygame.display.flip()
 
     def loopExternalUser(self):
         while not self.done:
@@ -740,16 +761,19 @@ class Game:
                 self.ExternalControl()
                 self.update()
                 self.draw()
+                self.ShowInfo()
+                # self.Nave.DrawAuxiliaryLines(self.screen)
+                pygame.display.flip()
 
     def end(self):
         pygame.quit()
 
     def reset(self):
         FinalResult = self.score.value
-        print(FinalResult)
         self.Nave.clear()
         self.ManagerAsters.clear()
         self.ManagerShoots.clear()
         self.score.clear()
         self.GameOver = "NoGameOver"
         self.done = False
+        return FinalResult
