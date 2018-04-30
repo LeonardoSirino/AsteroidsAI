@@ -315,6 +315,7 @@ class SpaceShip:
     def clear(self):
         self.x_pos = self.settings.SCREEN_WIDTH / 2
         self.y_pos = self.settings.SCREEN_HEIGHT / 2
+        self.angle = 0
 
     def GetCoords(self):
         x_Coords = [0, -self.__side *
@@ -438,7 +439,7 @@ class score:
     def __init__(self, color):
         self.TimeScore = 0.01
         self.ShootScore = -1
-        self.DestroyScore = 5
+        self.DestroyScore = 8
         self.ShipColisionScore = -50
         self.value_to_show = 0
         self.value = 0
@@ -560,6 +561,7 @@ class Game:
         self.abort = False
         pygame.font.init()
         self.font = pygame.font.SysFont('Calibri', 20, bold=1)
+        self.showGame = True
 
     def init_classes(self):
         self.settings = GameSettings()
@@ -653,9 +655,13 @@ class Game:
                     self.done = True
                     self.GameOver = "GameOverExternal"
                 elif event.key == pygame.K_s:
+                    self.showGame = True
                     self.settings.FPS = 60
+                elif event.key == pygame.K_h:
+                    self.showGame = False
                 elif event.key == pygame.K_f:
-                    self.settings.FPS = 2000
+                    self.showGame = True
+                    self.settings.FPS = 240
 
         if input[0] > 0.5:
             self.Nave.Rotate("-")
@@ -709,8 +715,10 @@ class Game:
         self.score(self.screen)
 
     def ShowInfo(self):
-        text1 = self.font.render("Geração: " + self.generation, False, self.settings.colors.get("blue"))
-        text2 = self.font.render("Ser: " + self.specimen, False, self.settings.colors.get("blue"))
+        text1 = self.font.render(
+            "Geração: " + self.generation, False, self.settings.colors.get("blue"))
+        text2 = self.font.render(
+            "Ser: " + self.specimen, False, self.settings.colors.get("blue"))
         self.screen.blit(text1, (0, 60))
         self.screen.blit(text2, (0, 90))
 
@@ -764,10 +772,11 @@ class Game:
                 self.generateOutput()
                 self.ExternalControl()
                 self.update()
-                self.draw()
-                self.ShowInfo()
-                # self.Nave.DrawAuxiliaryLines(self.screen)
-                pygame.display.flip()
+                if self.showGame:
+                    self.draw()
+                    self.ShowInfo()
+                    # self.Nave.DrawAuxiliaryLines(self.screen)
+                    pygame.display.flip()
 
     def end(self):
         pygame.quit()

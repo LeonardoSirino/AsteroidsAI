@@ -35,9 +35,9 @@ class AGPlayer:
     NumberInputs = 8 + 1
     NumberOutputs = 5
     Mw1 = 1 / 9
-    Dw1 = Mw1 / 2
+    Dw1 = Mw1 / 16
     Mw2 = 1 / (Neurons + 1)
-    Dw2 = Mw2 / 2
+    Dw2 = Mw2 / 16
 
     def __init__(self):
         self.name = "random"
@@ -90,6 +90,7 @@ class AGPlayer:
         4 - Break
         """
         input = self.CalcResult(output)
+        # print(input)
 
         return input
 
@@ -130,7 +131,7 @@ def Selection(players, size):
 
 config = GameSettings()
 config.GameOverMode = "GameOverExternal"
-config.FPS = 2000
+config.FPS = 60
 player = AGPlayer()
 player.initializeWeights()
 players = player.GenChildren(5, 0.8)
@@ -156,8 +157,8 @@ def main(player, Info):
         return [False, FinalResult]
 
 
-Generations = 100
-alpha = 0.9
+Generations = 10000
+alpha = 0.99
 
 gens = []
 scores = []
@@ -179,12 +180,17 @@ for gen in range(1, Generations + 1):
     file.write("\n\n --- W2\n")
     file.write(np.array_str(alive_players[-1].w2))
     file.write("\n\n\n")
-    players = alive_players
+    players = alive_players[:]
     for player in alive_players:
         children = player.GenChildren(5, alpha)
         players += children
 
-    alpha *= 0.9
+    base_player = AGPlayer()
+    base_player.initializeWeights()
+    mutated = base_player.GenChildren(3, 0.8)
+    players += mutated
+
+    alpha *= 0.99
 
     gens.append(gen)
     scores.append(alive_players[-1].Score)
