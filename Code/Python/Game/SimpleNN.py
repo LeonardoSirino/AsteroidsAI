@@ -13,7 +13,7 @@ class DynamicUpdate():
         self.lines, = self.ax.plot([], [], '-')
         # Autoscale on unknown axis and known lims on the other
         self.ax.set_autoscaley_on(True)
-        #self.ax.set_xlim(self.min_x, self.max_x)
+        # self.ax.set_xlim(self.min_x, self.max_x)
         plt.xlabel("Gerações")
         plt.ylabel("Melhor Score")
         plt.title("NN for Asteroids Game")
@@ -53,6 +53,37 @@ class AGPlayer:
                 (AGPlayer.Neurons - 1, AGPlayer.NumberInputs))
         RV2 = - AGPlayer.Dw2 + 2 * AGPlayer.Dw2 * \
             np.random.random_sample((AGPlayer.NumberOutputs, AGPlayer.Neurons))
+        return (RV1, RV2)
+
+    def MutatedVariation(self, prob):
+        Seed = np.random.random_sample(
+            (AGPlayer.Neurons - 1, AGPlayer.NumberInputs))
+        Mutations = []
+        for line in Seed:
+            MutatedLine = []
+            for value in line:
+                if value > prob:
+                    MutatedLine.append(0)
+                else:
+                    MutatedLine.append(value)
+            Mutations.append(MutatedLine)
+
+        RV1 = (-1)**random.randint(0, 1) * AGPlayer.Dw1 * np.array(Mutations)
+
+        Seed = np.random.random_sample(
+            (AGPlayer.NumberOutputs, AGPlayer.Neurons))
+        Mutations = []
+        for line in Seed:
+            MutatedLine = []
+            for value in line:
+                if value > prob:
+                    MutatedLine.append(0)
+                else:
+                    MutatedLine.append(value)
+            Mutations.append(MutatedLine)
+
+        RV2 = (-1)**random.randint(0, 1) * AGPlayer.Dw2 * np.array(Mutations)
+
         return (RV1, RV2)
 
     def initializeWeights(self):
@@ -115,6 +146,17 @@ class AGPlayer:
             children.append(child)
         return children
 
+    def Mutate(self, prob):
+        if random.random() < prob:
+            MV = self.MutatedVariation(prob)
+            mutation = AGPlayer()
+            w1 = self.w1 + alpha * MV[0]
+            w2 = self.w2 + alpha * MV[1]
+            mutation.setWeights(w1, w2)
+            return [True, mutation]
+        else:
+            return [False, None]
+
 
 class Info:
     def __init__(self, i, max_i, gen, tries):
@@ -136,10 +178,13 @@ def PlayerLog(player):
     score = round(player.Score, 2)
     W1m = round(np.mean(player.w1), 2)
     W1max = round(np.max(player.w1), 2)
+    W1min = round(np.min(player.w1), 2)
     W2m = round(np.mean(player.w2), 2)
     W2max = round(np.max(player.w2), 2)
+    W2min = round(np.min(player.w2), 2)
     log = "ID " + str(player.ID) + "  Score: " + str(score) + "  W1m: " + str(W1m) + "  W2m: " + \
-        str(W2m) + "  W1max: " + str(W1max) + "  W2max: " + str(W2max)
+        str(W2m) + "  W1max: " + str(W1max) + "  W2max: " + str(W2max) + \
+        "  W1min: " + str(W1min) + "  W2min: " + str(W2min)
     return log
 
 
@@ -172,12 +217,12 @@ def main(player, Info):
         else:
             results.append(AsterGame.reset())
 
-    FinalResult = np.min(results)
+    FinalResult = np.mean(results)
     return [False, FinalResult]
 
 
 Generations = 5000
-tries = 5
+tries = 3
 alpha = 0.90
 
 gens = []
@@ -204,13 +249,16 @@ for gen in range(1, Generations + 1):
     for player in alive_players:
         children = player.GenChildren(5, alpha)
         players += children
+        mutation = player.Mutate(0.2)
+        if mutation[0]:
+            players.append(mutation[1])
 
     base_player = AGPlayer()
     base_player.initializeWeights()
-    mutated = base_player.GenChildren(3, 0.8)
+    mutated = base_player.GenChildren(2, 0.8)
     players += mutated
 
-    alpha *= 0.95
+    alpha *= 0.98
 
     gens.append(gen)
     scores.append(alive_players[-1].Score)

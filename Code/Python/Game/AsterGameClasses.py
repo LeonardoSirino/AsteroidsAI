@@ -8,8 +8,8 @@ import copy
 
 class GameSettings:
     def __init__(self):
-        self.drag = 0.99
-        self.angDrag = 0.95
+        self.drag = 0.9
+        self.angDrag = 0.9
         self.SCREEN_WIDTH = 700
         self.SCREEN_HEIGHT = 500
         self.colors = {"black": (0, 0, 0), "white": (
@@ -29,7 +29,7 @@ class GameSettings:
 
 class AsterManage:
     def __init__(self):
-        self.__maxAsters = 20
+        self.__maxAsters = 10
         self.__minVel = 1
         self.__maxVel = 4
         self.maxSize = 30
@@ -439,7 +439,7 @@ class score:
     def __init__(self, color):
         self.TimeScore = 0.01
         self.ShootScore = -1
-        self.DestroyScore = 8
+        self.DestroyScore = 6
         self.ShipColisionScore = -50
         self.value_to_show = 0
         self.value = 0
@@ -480,7 +480,7 @@ class NEAT_input:
     def __init__(self, settings):
         self.input = [0] * 10
         """Input:
-        0 - Distância a frente
+        0 - Distância a frente (1 - Mais perto / 0 - Mais distante)
         1 - Distância atrás
         3 - Distância a direita
         4 - Distância a esquerda
@@ -538,9 +538,9 @@ class NEAT_input:
 
                 index = np.argmin(distances)
                 IDs_inTheWay.append(asters[index].ID)
-                self.input[i] = np.min(distances) / NormalizerLenght
+                self.input[i] = 1 - np.min(distances) / NormalizerLenght
             else:
-                self.input[i] = 1
+                self.input[i] = 0
 
             i += 1
 
@@ -671,7 +671,7 @@ class Game:
                     self.settings.FPS = 100000
                 elif event.key == pygame.K_f:
                     self.showGame = True
-                    self.settings.FPS = 240
+                    self.settings.FPS = 2000
 
         if input[0] > 0.5:
             self.Nave.Rotate("-")

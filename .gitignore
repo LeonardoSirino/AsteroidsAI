@@ -1,3 +1,4 @@
 *.aliases
 *.lvlps
 /Code/Python/Game/data.txt
+/Code/Python/Game/BestPlayerSoFar.txt
