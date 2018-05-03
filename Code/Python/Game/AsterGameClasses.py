@@ -480,32 +480,54 @@ class NEAT_input:
     def __init__(self, settings):
         self.input = [0] * 10
         """Input:
-        0 - Distância a frente (1 - Mais perto / 0 - Mais distante)
-        1 - Distância atrás
-        3 - Distância a direita
-        4 - Distância a esquerda
-        5 - Ângulo da nave
-        6 - Velocidade da nave
-        7 - Rotação da nave
-        8 - Distância até a o limite superior
-        9 - Distância até o limite lateral
+        0 - Ângulo da nave
+        1 - Velocidade da nave
+        2 - Rotação da nave
+        3 - Distância até a o limite superior
+        4 - Distância até o limite lateral
+        5 até 12 - Distância até o asteróide mais próximo (1 - mais próximo, 0 - mais distante)
         """
         self.settings = settings
 
+    def IntersectLine(self, aster, direction):
+        m = np.tan(direction)
+        x0 = aster.x_pos
+        y0 = aster.y_pos
+        size = aster.GetSize()
+        DistLine = abs(m * x0 - y0) / np.sqrt(1 + m**2)
+        if size > DistLine:
+            distance = np.sqrt(x0**2 * y0**2)
+            return [True, distance]
+        else:
+            return [False, None]
+
     def calcInput(self, nave, asters):
-        self.input[5] = nave.angle / (2 * m.pi)
-        self.input[6] = nave.veloc / self.settings.MaxShipVel
-        self.input[7] = nave.ang_vel / self.settings.MaxShipAngVel
-        self.input[8] = (self.settings.SCREEN_HEIGHT -
+        self.input[0] = nave.angle / (2 * m.pi)
+        self.input[1] = nave.veloc / self.settings.MaxShipVel
+        self.input[2] = nave.ang_vel / self.settings.MaxShipAngVel
+        self.input[3] = (self.settings.SCREEN_HEIGHT -
                          nave.y_pos) / self.settings.SCREEN_HEIGHT
-        self.input[9] = (self.settings.SCREEN_WIDTH -
+        self.input[4] = (self.settings.SCREEN_WIDTH -
                          nave.x_pos) / self.settings.SCREEN_WIDTH
         NormalizerLenght = m.sqrt(
             self.settings.SCREEN_HEIGHT**2 + self.settings.SCREEN_WIDTH**2)
         self.Asters = asters
         self.nave = nave
         IDs_inTheWay = []
+        directions = 4
+        distances = [0] * directions * 2
 
+        for aster in self.Asters:  # Mudando para o referencial da nave
+            aster.ChangeToShipPersp(nave)
+
+        for i in range(0, directions):
+
+            angle = m.pi / directions
+
+        for aster in self.Asters:  # Voltando para o referencial inicial
+            aster.ReturnPersp()
+
+        """ Jeito antigo de calcular as distâncias até os asteróides
         asters_posXline = []
         asters_negXline = []
         asters_posYline = []
@@ -543,6 +565,7 @@ class NEAT_input:
                 self.input[i] = 0
 
             i += 1
+        """
 
         return (IDs_inTheWay, self.input)
 

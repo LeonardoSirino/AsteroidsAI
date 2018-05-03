@@ -1,6 +1,8 @@
 import numpy as np
 
-a = np.array([1,2,3,4,5])
-b = np.append(a, 6)
+x1 = -1
+y1 = -0.1
+x0 = 0
+y0 = 0
 
-print(b)
+print(np.arctan2(y1 - y0, x1 - x0))

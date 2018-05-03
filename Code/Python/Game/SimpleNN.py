@@ -223,7 +223,7 @@ def main(player, Info):
 
 Generations = 5000
 tries = 3
-alpha = 0.90
+alpha = 1
 
 gens = []
 scores = []
@@ -258,7 +258,7 @@ for gen in range(1, Generations + 1):
     mutated = base_player.GenChildren(2, 0.8)
     players += mutated
 
-    alpha *= 0.98
+    alpha *= 0.90
 
     gens.append(gen)
     scores.append(alive_players[-1].Score)
