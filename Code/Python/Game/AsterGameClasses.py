@@ -195,8 +195,8 @@ class Aster:
         self.old_y = self.y_pos
         x = self.x_pos - nave.x_pos
         y = self.y_pos - nave.y_pos
-        xx = x * m.cos(-nave.angle) + y * m.sin(-nave.angle)
-        yy = - x * m.sin(-nave.angle) + y * m.cos(-nave.angle)
+        xx = x * m.cos(nave.angle) + y * m.sin(nave.angle)
+        yy = - x * m.sin(nave.angle) + y * m.cos(nave.angle)
         self.x_pos = xx
         self.y_pos = yy
 
@@ -389,17 +389,15 @@ class SpaceShip:
 
     def DrawAuxiliaryLines(self, screen):
         lenght = 500
-        n1_x = self.x_pos + lenght * m.sin(self.angle)
-        n1_y = self.y_pos + lenght * m.cos(self.angle)
-        n2_x = self.x_pos - lenght * m.sin(self.angle)
-        n2_y = self.y_pos - lenght * m.cos(self.angle)
-        t1_x = self.x_pos + lenght * m.sin(self.angle - m.pi / 2)
-        t1_y = self.y_pos + lenght * m.cos(self.angle - m.pi / 2)
-        t2_x = self.x_pos - lenght * m.sin(self.angle - m.pi / 2)
-        t2_y = self.y_pos - lenght * m.cos(self.angle - m.pi / 2)
-
-        pygame.draw.line(screen, (255, 255, 0), (n1_x, n1_y), (n2_x, n2_y))
-        pygame.draw.line(screen, (255, 255, 0), (t1_x, t1_y), (t2_x, t2_y))
+        directions = 4
+        angle = self.angle
+        for i in range(0, 4):
+            n1_x = self.x_pos + lenght * m.sin(angle)
+            n1_y = self.y_pos + lenght * m.cos(angle)
+            n2_x = self.x_pos - lenght * m.sin(angle)
+            n2_y = self.y_pos - lenght * m.cos(angle)
+            pygame.draw.line(screen, (255, 255, 0), (n1_x, n1_y), (n2_x, n2_y))
+            angle += m.pi / 4
 
 
 class FPS:
@@ -490,18 +488,21 @@ class NEAT_input:
         self.settings = settings
 
     def IntersectLine(self, aster, direction):
-        m = np.tan(direction)
+        x2 = m.cos(direction)
+        y2 = m.sin(direction)
         x0 = aster.x_pos
         y0 = aster.y_pos
         size = aster.GetSize()
-        DistLine = abs(m * x0 - y0) / np.sqrt(1 + m**2)
-        if size > DistLine:
-            distance = np.sqrt(x0**2 * y0**2)
-            return [True, distance]
+        DistLine = abs(y2 * x0 - x2 * y0) / m.sqrt(y2**2 + x2**2)
+        if size >= DistLine:
+            distance = m.sqrt(x0**2 + y0**2)
+            positive = y0 >= 0
+            return [True, distance, positive]
         else:
-            return [False, None]
+            return [False, None, None]
 
     def calcInput(self, nave, asters):
+        self.input = [0] * 5
         self.input[0] = nave.angle / (2 * m.pi)
         self.input[1] = nave.veloc / self.settings.MaxShipVel
         self.input[2] = nave.ang_vel / self.settings.MaxShipAngVel
@@ -511,61 +512,35 @@ class NEAT_input:
                          nave.x_pos) / self.settings.SCREEN_WIDTH
         NormalizerLenght = m.sqrt(
             self.settings.SCREEN_HEIGHT**2 + self.settings.SCREEN_WIDTH**2)
-        self.Asters = asters
-        self.nave = nave
-        IDs_inTheWay = []
+
         directions = 4
+        IDs_inTheWay = [-1] * directions * 2
         distances = [0] * directions * 2
 
-        for aster in self.Asters:  # Mudando para o referencial da nave
+        for aster in asters:  # Mudando para o referencial da nave
             aster.ChangeToShipPersp(nave)
 
+        angle = 0
         for i in range(0, directions):
+            for aster in asters:
+                temp = self.IntersectLine(aster, angle)
+                if temp[0]:  # O asteroide intersecta a linha
+                    if temp[2]:  # Analisando se é positivo ou negativo
+                        index = i
+                    else:
+                        index = i + directions
 
-            angle = m.pi / directions
+                    distance = 1 - temp[1] / NormalizerLenght
+                    if distance > distances[index]:
+                        distances[index] = distance
+                        IDs_inTheWay[index] = aster.ID
 
-        for aster in self.Asters:  # Voltando para o referencial inicial
+            angle += m.pi / directions
+
+        self.input += distances
+
+        for aster in asters:  # Voltando para o referencial inicial
             aster.ReturnPersp()
-
-        """ Jeito antigo de calcular as distâncias até os asteróides
-        asters_posXline = []
-        asters_negXline = []
-        asters_posYline = []
-        asters_negYline = []
-        for aster in self.Asters:
-            aster.ChangeToShipPersp(nave)
-            size = aster.GetSize()
-            x = aster.x_pos
-            y = aster.y_pos
-            if abs(x) < size and y > 0:
-                asters_posYline.append(aster)
-            if abs(x) < size and y <= 0:
-                asters_negYline.append(aster)
-            if abs(y) < size and x > 0:
-                asters_posXline.append(aster)
-            if abs(y) < size and x <= 0:
-                asters_negXline.append(aster)
-            aster.ReturnPersp()
-
-        asters_lists = [asters_posYline, asters_negYline,
-                        asters_posXline, asters_negXline]
-        i = 0
-        for asters in asters_lists:
-            if len(asters) != 0:
-                distances = []
-                for aster in asters:
-                    distance = m.sqrt((aster.x_pos - nave.x_pos)
-                                      ** 2 + (aster.y_pos - nave.y_pos)**2)
-                    distances.append(distance)
-
-                index = np.argmin(distances)
-                IDs_inTheWay.append(asters[index].ID)
-                self.input[i] = 1 - np.min(distances) / NormalizerLenght
-            else:
-                self.input[i] = 0
-
-            i += 1
-        """
 
         return (IDs_inTheWay, self.input)
 
@@ -631,7 +606,7 @@ class Game:
         NOMOVE = 2
         zorder = -1
         hwnd = pygame.display.get_wm_info()['window']
-        SetWindowPos(hwnd, zorder, 0, 0, 0, 0, NOMOVE | NOSIZE)
+        #SetWindowPos(hwnd, zorder, 0, 0, 0, 0, NOMOVE | NOSIZE)
 
         # Critério de parada
         self.done = False
@@ -813,7 +788,7 @@ class Game:
                 if self.showGame:
                     self.draw()
                     self.ShowInfo()
-                    # self.Nave.DrawAuxiliaryLines(self.screen)
+                    #self.Nave.DrawAuxiliaryLines(self.screen)
                     pygame.display.flip()
 
     def end(self):

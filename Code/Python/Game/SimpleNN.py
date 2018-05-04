@@ -33,7 +33,7 @@ class DynamicUpdate():
 class AGPlayer:
     ID = 0
     Neurons = 20 + 1
-    NumberInputs = 10 + 1
+    NumberInputs = 13 + 1
     NumberOutputs = 5
     Mw1 = 1 / 9
     Dw1 = Mw1 / 1
@@ -258,7 +258,7 @@ for gen in range(1, Generations + 1):
     mutated = base_player.GenChildren(2, 0.8)
     players += mutated
 
-    alpha *= 0.90
+    alpha *= 0.98
 
     gens.append(gen)
     scores.append(alive_players[-1].Score)
