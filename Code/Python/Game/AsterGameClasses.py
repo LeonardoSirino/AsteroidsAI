@@ -435,9 +435,9 @@ class FPS:
 
 class score:
     def __init__(self, color):
-        self.TimeScore = 0.01
-        self.ShootScore = -1
-        self.DestroyScore = 6
+        self.TimeScore = 0.03
+        self.ShootScore = -0.5
+        self.DestroyScore = 7
         self.ShipColisionScore = -50
         self.value_to_show = 0
         self.value = 0
