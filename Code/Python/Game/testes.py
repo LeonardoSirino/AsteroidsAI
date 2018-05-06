@@ -1,8 +1,19 @@
-import numpy as np
+import matplotlib.pyplot as plt
+from DynamicGraphs import Chart
+import random
+import time
 
-x1 = -1
-y1 = -0.1
-x0 = 0
-y0 = 0
-print(np.tan(0.1))
-print(np.arctan2(y1 - y0, x1 - x0))
+MyGraph = plt.subplots()
+plt.xlabel("Amostra")
+plt.ylabel("Valor")
+
+MyChart = Chart()
+MyChart.setPlot(MyGraph)
+MyChart.setXaxisType("absolute_time")
+
+x = range(0, 200)
+y = []
+for i in x:
+    MyChart.appendData(random.random())
+    MyChart.plot()
+    time.sleep(0.01)

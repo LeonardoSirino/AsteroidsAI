@@ -2,32 +2,15 @@ from AsterGameClasses import Game, GameSettings
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+from DynamicGraphs import Chart
 
-plt.ion()
+progressChart = plt.subplots()
+plt.xlabel("Gerações")
+plt.ylabel("Melhor Score")
+plt.title("NN for Asteroids Game")
 
-
-class DynamicUpdate():
-    def on_launch(self):
-        # Set up plot
-        self.figure, self.ax = plt.subplots()
-        self.lines, = self.ax.plot([], [], '-')
-        # Autoscale on unknown axis and known lims on the other
-        self.ax.set_autoscaley_on(True)
-        # self.ax.set_xlim(self.min_x, self.max_x)
-        plt.xlabel("Gerações")
-        plt.ylabel("Melhor Score")
-        plt.title("NN for Asteroids Game")
-
-    def on_running(self, xdata, ydata):
-        # Update data (with the new _and_ the old points)
-        self.lines.set_xdata(xdata)
-        self.lines.set_ydata(ydata)
-        # Need both of these in order to rescale
-        self.ax.relim()
-        self.ax.autoscale_view()
-        # We need to draw *and* flush
-        self.figure.canvas.draw()
-        self.figure.canvas.flush_events()
+Progress = Chart()
+Progress.setPlot(progressChart)
 
 
 class AGPlayer:
@@ -199,9 +182,6 @@ AsterGame = Game()
 AsterGame.init_classes()
 AsterGame.setConfig(config)
 
-ScoreGraph = DynamicUpdate()
-ScoreGraph.on_launch()
-
 
 def main(player, Info):
     results = []
@@ -225,9 +205,6 @@ Generations = 5000
 tries = 3
 alpha = 1
 
-gens = []
-scores = []
-
 file = open("data.txt", mode="w")
 for gen in range(1, Generations + 1):
     print("Iniciando geração: " + str(gen))
@@ -247,9 +224,9 @@ for gen in range(1, Generations + 1):
     file.write("\n\n\n")
     players = alive_players[:]
     for player in alive_players:
-        children = player.GenChildren(5, alpha)
+        children = player.GenChildren(3, alpha)
         players += children
-        mutation = player.Mutate(0.2)
+        mutation = player.Mutate(0.8)
         if mutation[0]:
             players.append(mutation[1])
 
@@ -260,10 +237,8 @@ for gen in range(1, Generations + 1):
 
     alpha *= 0.98
 
-    gens.append(gen)
-    scores.append(alive_players[-1].Score)
-
-    ScoreGraph.on_running(gens, scores)
+    Progress.appendData(alive_players[-1].Score)
+    Progress.plot()
 
 file.close()
 AsterGame.end()
