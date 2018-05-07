@@ -1,19 +1,5 @@
-import matplotlib.pyplot as plt
-from DynamicGraphs import Chart
-import random
-import time
+a = [[1,2], [2,3], [4,5]]
+a.insert(1, [])
+a.__delitem__(0)
 
-MyGraph = plt.subplots()
-plt.xlabel("Amostra")
-plt.ylabel("Valor")
-
-MyChart = Chart()
-MyChart.setPlot(MyGraph)
-MyChart.setXaxisType("absolute_time")
-
-x = range(0, 200)
-y = []
-for i in x:
-    MyChart.appendData(random.random())
-    MyChart.plot()
-    time.sleep(0.01)
+print(a)
