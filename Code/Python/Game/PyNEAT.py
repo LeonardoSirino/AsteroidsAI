@@ -19,16 +19,15 @@ class neuron:
             self.forward_connections.append(ID)
             self.weights.append(weight)
 
-    def IsFullyConnected(self, next_layer_neurons):
-        IsFullyConnected = True
+    def AvailableConnections(self, next_layer_neurons):
+        AvailableConnections = []
         for ID in next_layer_neurons:
             try:
                 self.forward_connections.index(ID)
-            except:
-                IsFullyConnected = False
-                break
+            except ValueError:
+                AvailableConnections.append(ID)
 
-        return IsFullyConnected
+        return AvailableConnections
 
     def __str__(self):
         base = "De " + str(self.ID) + " para "
@@ -242,7 +241,7 @@ class Genome:
         self.connections.insert(layer_index, [])
 
     def AddConection(self):
-        apt_neurons = []  # Neurônios aptos a receber uma nova conexão mutada
+        AvailableConnections = []
         self.NetRepresentation()
         net = self.Net
         jmax = len(net) - 2
@@ -251,18 +250,21 @@ class Genome:
         for layer in net:
             next_layer_neurons = net[j + 1].ReturnNeurons()
             for neuron in layer.neurons:
-                if neuron.IsFullyConnected(next_layer_neurons):
+                neuron_avb_con = neuron.AvailableConnections(
+                    next_layer_neurons)
+                if neuron_avb_con == []:
                     pass
                 else:
-                    apt_neurons.append(neuron)
+                    AvailableConnections.append([neuron.ID, neuron_avb_con])
 
             j += 1
             if j > jmax:
                 break
 
+        # Lista com as conexões disponíveis de serem criadas
+        print(AvailableConnections)
         """
-        Listar todas as conexões possíveis a partir dos neurônios aptos
-        A partir destas conexões, escolher uma aleatoriamente para ser criada
+        Montar uma lista com os pares de neurônios e escolher aleatoriamente a partir desta lista
         """
 
     def NetRepresentation(self):
