@@ -1,7 +1,86 @@
 import random
 
 
+class neuron:
+    """
+    Classe para representar um neurônio da rede e suas conexões seguintes
+    Esta classe é usada para a criação das representações e para a mutação de adição de conexão
+    """
+
+    def __init__(self, ID):
+        self.ID = ID
+        self.forward_connections = []
+        self.weights = []
+
+    def AddConection(self, ID, weight):
+        try:
+            self.forward_connections.index(ID)
+        except ValueError:
+            self.forward_connections.append(ID)
+            self.weights.append(weight)
+
+    def IsFullyConnected(self, next_layer_neurons):
+        IsFullyConnected = True
+        for ID in next_layer_neurons:
+            try:
+                self.forward_connections.index(ID)
+            except:
+                IsFullyConnected = False
+                break
+
+        return IsFullyConnected
+
+    def __str__(self):
+        base = "De " + str(self.ID) + " para "
+        outs = ""
+        for neuron in self.forward_connections:
+            outs += str(neuron) + ", "
+
+        return base + outs
+
+
+class Layer:
+    """
+    Classe para representar uma camada e todos seus neurônios
+    Esta classe é usada para se criar a representação e a mutação de adição de conexão
+    """
+
+    def __init__(self, number):
+        self.number = number
+        self.neurons = []
+        self.neuronsIDs = []
+
+    def AddConection(self, Connection):
+        try:
+            # Neurônio já existe, apenas a conexão será inserida
+            index = self.neuronsIDs.index(Connection.input)
+            selected_neuron = self.neurons[index]
+            selected_neuron.AddConection(Connection.output, Connection.weight)
+        except ValueError:
+            # Neurônio não existe, será criado e adicionado
+            self.neuronsIDs.append(Connection.input)
+            new_neuron = neuron(Connection.input)
+            new_neuron.AddConection(Connection.output, Connection.weight)
+            self.neurons.append(new_neuron)
+
+    def ReturnNeurons(self):
+        return self.neuronsIDs
+
+    def __str__(self):
+        text = "Layer " + str(self.number) + "\n"
+        for neuron in self.neurons:
+            text += neuron.__str__()
+            text += "\n"
+
+        return text
+
+
 class Connection:
+    """
+    Classe para representar cada uma das conexões que compõe o genoma
+    As informações contidas nesta classe que serão usadas para a o uso da rede neural
+    """
+
     def __init__(self):
         self.input = 0
         self.output = 0
@@ -27,14 +106,16 @@ class Connection:
 
 
 class Genome:
+
+    innovation_number = 0
+
     def __init__(self):
+        self.Net = None  # representação da rede neural
         self.connections = [[]]
         """
         As conexões são formadas por listas, cada elemento da lista é um layer da rede.
         Cada layer possui uma lista de conexões
         """
-
-        self.innovation_number = 0
 
     def InitGenome(self, inputs, outputs):
         self.inputs = inputs + 1  # Bias neuron
@@ -53,8 +134,8 @@ class Genome:
             for j in range(0, self.outputs):
                 new_connection = Connection()
                 new_connection.SetConnection(
-                    i, self.inputs + j, self.innovation_number, 0)
-                self.innovation_number += 1
+                    i, self.inputs + j, Genome.innovation_number, 0)
+                Genome.innovation_number += 1
                 first_connections.append(new_connection)
 
         self.connections[0] = first_connections
@@ -94,16 +175,9 @@ class Genome:
         self.Activations = [0] * size
 
     def AddNode(self):
-        """
-        Pensar em outra forma de selecionar a conexão a ser mutada
-        Da forma atual, as conexões em layers mais densos tem menor probabilidade de mutação
-        Desta forma a rede tende a se extender demais e ter layers muito vazios
-        """
-
-        layer_index = random.randint(0, len(self.connections) - 1)
-        layer = self.connections[layer_index]
-        connection_index = random.randint(0, len(layer) - 1)
-        connection = layer[connection_index]
+        LinearizedGenome = self.ReturnLinearizedGenome()
+        connection_index = random.randint(0, len(LinearizedGenome) - 1)
+        connection = LinearizedGenome[connection_index]
         newNode_layer = connection.from_layer + 1
 
         if connection.to_layer == newNode_layer:
@@ -112,10 +186,10 @@ class Genome:
 
         Con1 = Connection()
         Con1.SetConnection(connection.input, self.CromIndex,
-                           self.innovation_number, connection.from_layer)
+                           Genome.innovation_number, connection.from_layer)
         Con1.SetWeight(connection.weight)
         self.connections[connection.from_layer].append(Con1)
-        self.innovation_number += 1
+        Genome.innovation_number += 1
 
         Con2 = Connection()
         Con2.SetConnection(self.CromIndex, connection.output,
@@ -129,7 +203,33 @@ class Genome:
         self.WeightedSums += [0]
         self.Activations += [0]
 
-        self.connections[layer_index].__delitem__(connection_index)
+        self.DelConnection(connection)
+
+    def ReturnLinearizedGenome(self):
+        LinearizedGenome = []
+        for layer in self.connections:
+            LinearizedGenome += layer
+
+        return LinearizedGenome
+
+    def DelConnection(self, Con_to_del):
+        layer_del = 0
+        con_del = 0
+        layer_index = 0
+        delete = False
+        for layer in self.connections:
+            con_index = 0
+            for connection in layer:
+                if connection == Con_to_del:
+                    delete = True
+                    layer_del = layer_index
+                    con_del = con_index
+                    break
+                con_index += 1
+            layer_index += 1
+
+        if delete:
+            self.connections[layer_del].__delitem__(con_del)
 
     def InsertLayer(self, layer_index):
         for layer in self.connections:
@@ -142,7 +242,47 @@ class Genome:
         self.connections.insert(layer_index, [])
 
     def AddConection(self):
-        pass
+        apt_neurons = []  # Neurônios aptos a receber uma nova conexão mutada
+        self.NetRepresentation()
+        net = self.Net
+        jmax = len(net) - 2
+
+        j = 0
+        for layer in net:
+            next_layer_neurons = net[j + 1].ReturnNeurons()
+            for neuron in layer.neurons:
+                if neuron.IsFullyConnected(next_layer_neurons):
+                    pass
+                else:
+                    apt_neurons.append(neuron)
+
+            j += 1
+            if j > jmax:
+                break
+
+        """
+        Listar todas as conexões possíveis a partir dos neurônios aptos
+        A partir destas conexões, escolher uma aleatoriamente para ser criada
+        """
+
+    def NetRepresentation(self):
+        if self.Net == None:
+            i = 1
+            net = []
+            for layer in self.connections:
+                rep_layer = Layer(i)
+                for connection in layer:
+                    rep_layer.AddConection(connection)
+
+                net.append(rep_layer)
+                i += 1
+
+            output_layer = Layer(i)
+            output_layer.neuronsIDs = range(
+                self.inputs, self.inputs + self.outputs)
+            net.append(output_layer)
+
+            self.Net = net
 
     def ActivateFunction(self, ws):
         if ws > 0:
@@ -165,15 +305,16 @@ class Genome:
 
 player = Genome()
 player.InitGenome(2, 3)
-print(player)
-nodes = 10
+# print(player)
+nodes = 1
 for i in range(0, nodes):
     player.AddNode()
+
 print(player)
+player.AddConection()
 player.InputData([2.5, 3.6])
 player.FeedForward()
 result = player.ReturnOutput()
-
 
 player.ClearNet()
 
