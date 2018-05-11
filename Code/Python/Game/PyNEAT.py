@@ -80,17 +80,19 @@ class Connection:
     As informações contidas nesta classe que serão usadas para a o uso da rede neural
     """
 
+    innovation_number = 0
+
     def __init__(self):
         self.input = 0
         self.output = 0
         self.weight = random.random()
-        self.innovation_number = 0
+        self.innovation_number = Connection.innovation_number
+        Connection.innovation_number += 1
         self.from_layer = 0
 
-    def SetConnection(self, input, output, innovation, layer):
+    def SetConnection(self, input, output, layer):
         self.input = input
         self.output = output
-        self.innovation_number = innovation
         self.from_layer = layer
         self.to_layer = layer + 1
 
@@ -105,8 +107,6 @@ class Connection:
 
 
 class Genome:
-
-    innovation_number = 0
 
     def __init__(self):
         self.Net = None  # representação da rede neural
@@ -133,8 +133,7 @@ class Genome:
             for j in range(0, self.outputs):
                 new_connection = Connection()
                 new_connection.SetConnection(
-                    i, self.inputs + j, Genome.innovation_number, 0)
-                Genome.innovation_number += 1
+                    i, self.inputs + j, 0)
                 first_connections.append(new_connection)
 
         self.connections[0] = first_connections
@@ -185,17 +184,14 @@ class Genome:
 
         Con1 = Connection()
         Con1.SetConnection(connection.input, self.CromIndex,
-                           Genome.innovation_number, connection.from_layer)
+                           connection.from_layer)
         Con1.SetWeight(connection.weight)
         self.connections[connection.from_layer].append(Con1)
-        Genome.innovation_number += 1
 
         Con2 = Connection()
-        Con2.SetConnection(self.CromIndex, connection.output,
-                           self.innovation_number, newNode_layer)
+        Con2.SetConnection(self.CromIndex, connection.output, newNode_layer)
         Con2.SetWeight(1)
         self.connections[newNode_layer].append(Con2)
-        self.innovation_number += 1
 
         # Alocação de espaço para o novo nó
         self.CromIndex += 1
@@ -261,11 +257,29 @@ class Genome:
             if j > jmax:
                 break
 
-        # Lista com as conexões disponíveis de serem criadas
-        print(AvailableConnections)
-        """
-        Montar uma lista com os pares de neurônios e escolher aleatoriamente a partir desta lista
-        """
+        if len(AvailableConnections) != 0:
+            neurons_pairs = []
+
+            for element in AvailableConnections:
+                source = element[0]
+                for target in element[1]:
+                    neurons_pairs.append([source, target])
+
+            pair_index = random.randint(0, len(neurons_pairs) - 1)
+            pair = neurons_pairs[pair_index]
+            layer = self.ReturnOwnerLayer(pair[0])
+            new_connection = Connection()
+            new_connection.SetConnection(pair[0], pair[1], layer)
+            new_connection.SetWeight(random.random())
+            self.connections[layer].append(new_connection)
+
+    def ReturnOwnerLayer(self, neuronID):
+        for layer in self.connections:
+            for connection in layer:
+                if connection.input == neuronID:
+                    return connection.from_layer
+
+        return None
 
     def NetRepresentation(self):
         if self.Net == None:
@@ -307,13 +321,17 @@ class Genome:
 
 player = Genome()
 player.InitGenome(2, 3)
-# print(player)
-nodes = 1
+print(player)
+
+nodes = 5
 for i in range(0, nodes):
     player.AddNode()
 
+connections = 5
+for i in range(0, connections):
+    player.AddConection()
+
 print(player)
-player.AddConection()
 player.InputData([2.5, 3.6])
 player.FeedForward()
 result = player.ReturnOutput()
