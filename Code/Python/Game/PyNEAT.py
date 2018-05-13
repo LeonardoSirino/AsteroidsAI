@@ -1,4 +1,6 @@
 import random
+import numpy as np
+import copy
 
 
 class neuron:
@@ -89,6 +91,7 @@ class Connection:
         self.innovation_number = Connection.innovation_number
         Connection.innovation_number += 1
         self.from_layer = 0
+        self.enable = True
 
     def SetConnection(self, input, output, layer):
         self.input = input
@@ -103,6 +106,9 @@ class Connection:
         text = "Do nó " + str(self.input) + " (L: " + str(self.from_layer) + ") ao nó " + str(self.output) + " (L: " + str(self.to_layer) + ") com peso " + \
             str(round(self.weight, 2)) + " - IN: " + \
             str(self.innovation_number)
+
+        if not self.enable:
+            text += " DISABLED"
         return text
 
 
@@ -148,15 +154,16 @@ class Genome:
     def FeedForward(self):
         for layer in self.connections:
             for connection in layer:
-                if connection.from_layer > 0:
-                    # Para o input layer não é preciso calcular as ativações
-                    ws = self.WeightedSums[connection.input]
-                    a = self.ActivateFunction(ws)
-                    self.Activations[connection.input] = a
+                if connection.enable:
+                    if connection.from_layer > 0:
+                        # Para o input layer não é preciso calcular as ativações
+                        ws = self.WeightedSums[connection.input]
+                        a = self.ActivateFunction(ws)
+                        self.Activations[connection.input] = a
 
-                a = self.Activations[connection.input]
-                w = connection.weight
-                self.WeightedSums[connection.output] += a * w
+                    a = self.Activations[connection.input]
+                    w = connection.weight
+                    self.WeightedSums[connection.output] += a * w
 
         for k in range(0, self.outputs):
             ws = self.WeightedSums[k + self.inputs]
@@ -174,8 +181,12 @@ class Genome:
 
     def AddNode(self):
         LinearizedGenome = self.ReturnLinearizedGenome()
-        connection_index = random.randint(0, len(LinearizedGenome) - 1)
-        connection = LinearizedGenome[connection_index]
+        valid = False
+        while not valid:
+            connection_index = random.randint(0, len(LinearizedGenome) - 1)
+            connection = LinearizedGenome[connection_index]
+            valid = connection.enable
+
         newNode_layer = connection.from_layer + 1
 
         if connection.to_layer == newNode_layer:
@@ -224,7 +235,7 @@ class Genome:
             layer_index += 1
 
         if delete:
-            self.connections[layer_del].__delitem__(con_del)
+            self.connections[layer_del][con_del].enable = False
 
     def InsertLayer(self, layer_index):
         for layer in self.connections:
@@ -288,7 +299,8 @@ class Genome:
             for layer in self.connections:
                 rep_layer = Layer(i)
                 for connection in layer:
-                    rep_layer.AddConection(connection)
+                    if connection.enable:
+                        rep_layer.AddConection(connection)
 
                 net.append(rep_layer)
                 i += 1
@@ -301,6 +313,9 @@ class Genome:
             self.Net = net
 
     def ActivateFunction(self, ws):
+        """MUDAR PARA A SIGMOIDAL
+        """
+
         if ws > 0:
             return ws
         else:
@@ -319,8 +334,87 @@ class Genome:
         return text
 
 
+class NEAT:
+    """
+    Classe para fornecer as funcionalidades esperadas num algoritmo de NEAT
+    """
+
+    def __init__(self):
+        self.c1 = 1
+        self.c2 = 1
+        self.c3 = 1
+
+    def CalcDistance(self, gen1, gen2):
+        """Cálculo da distância entre duas topoligas diferentes        
+        Arguments:
+            gen1 {[linearized genome]} -- [genoma 1]
+            gen2 {[linearized genome]} -- [genoma 2]
+        """
+        lastIN1 = self.returnLastInnovation(gen1)
+        lastIN2 = self.returnLastInnovation(gen2)
+        N = np.max([len(gen1), len(gen2)])
+
+        if lastIN1 > lastIN2:
+            newer = gen1
+            older = gen2
+        else:
+            newer = gen2
+            older = gen1
+
+        disjoint = 0
+        weight_distance = 0
+        for con_old in older:
+            IN = con_old.innovation_number
+            match = False
+            for con_new in newer:
+                if con_new.innovation_number == IN:
+                    match = True
+                    weight_distance += (con_new.weight - con_old.weight)**2
+                    break
+
+            if match:
+                pass
+            else:
+                disjoint += 1
+
+        excess = 0
+        olderLastIN = np.min([lastIN1, lastIN2])
+        for connection in newer:
+            if connection.innovation_number > olderLastIN:
+                excess += 1
+
+        distance = self.c1 * excess / N + self.c2 * \
+            disjoint / N + self.c3 * weight_distance
+
+        print("Disjoint: " + str(disjoint) + " excess: " +
+              str(excess) + " weight: " + str(round(weight_distance, 2)))
+        return distance
+
+    def returnLastInnovation(self, gen):
+        lastIN = 0
+        for connection in gen:
+            if connection.innovation_number > lastIN:
+                lastIN = connection.innovation_number
+
+        return lastIN
+
+
 player = Genome()
 player.InitGenome(2, 3)
+copyPlayer = copy.deepcopy(player)
+for i in range(0, 10):
+    player.AddNode()
+
+player.AddConection()
+copyPlayer.AddNode()
+copyPlayer.AddConection()
+
+myNEAT = NEAT()
+distance = myNEAT.CalcDistance(
+    player.ReturnLinearizedGenome(), copyPlayer.ReturnLinearizedGenome())
+print(distance)
+
+"""
 print(player)
 
 nodes = 5
@@ -339,3 +433,4 @@ result = player.ReturnOutput()
 player.ClearNet()
 
 print(result)
+"""
