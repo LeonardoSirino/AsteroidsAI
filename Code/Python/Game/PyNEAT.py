@@ -56,11 +56,15 @@ class Layer:
             # Neurônio já existe, apenas a conexão será inserida
             index = self.neuronsIDs.index(Connection.input)
             selected_neuron = self.neurons[index]
-            selected_neuron.AddNetConnection(Connection.output, Connection.weight)
+            selected_neuron.AddNetConnection(
+                Connection.output, Connection.weight)
+        except ValueError:
+            # Neurônio não existe, será criado e adicionado
+            self.neuronsIDs.append(Connection.input)
+            new_neuron = neuron(Connection.input)
+            new_neuron.AddNetConnection(Connection.output, Connection.weight)
             self.neurons.append(new_neuron)
-        except:
-            pass
-            
+
     def ReturnNeurons(self):
         return self.neuronsIDs
 
@@ -98,6 +102,9 @@ class Connection:
         self.to_layer = layer + 1
         self.recurrent = recurrent
 
+    def SetOutLayer(self, OutLayer):
+        self.to_layer = OutLayer
+
     def SetWeight(self, weight):
         self.weight = weight
 
@@ -105,6 +112,9 @@ class Connection:
         text = "Do nó " + str(self.input) + " (L: " + str(self.from_layer) + ") ao nó " + str(self.output) + " (L: " + str(self.to_layer) + ") com peso " + \
             str(round(self.weight, 2)) + " - IN: " + \
             str(self.innovation_number)
+
+        if self.recurrent:
+            text += " recorrente"
 
         if not self.enable:
             text += " DISABLED"
@@ -115,7 +125,7 @@ class Genome:
 
     def __init__(self):
         self.Net = None  # representação da rede neural
-        self.connections = [[]]
+        self.connections = [[], []]
         """
         As conexões são formadas por listas, cada elemento da lista é um layer da rede.
         Cada layer possui uma lista de conexões
@@ -145,7 +155,7 @@ class Genome:
         self.connections[0] = first_connections
 
     def InputData(self, data):
-        data += [1]
+        data += [1]  # Bias neuron
         if len(data) == self.inputs:
             self.Activations[0:self.inputs] = data
         else:
@@ -206,7 +216,8 @@ class Genome:
         self.connections[connection.from_layer].append(Con1)
 
         Con2 = Connection()
-        Con2.SetConnection(self.CromIndex, connection.output, newNode_layer, False)
+        Con2.SetConnection(self.CromIndex, connection.output,
+                           newNode_layer, False)
         Con2.SetWeight(1)
         self.connections[newNode_layer].append(Con2)
 
@@ -257,33 +268,63 @@ class Genome:
     def RandomConnection(self):
         self.NetRepresentation()
         net = self.Net
-        print(net)
+        genome = self.ReturnLinearizedGenome()
+        NeuronsIDs = []
 
-        """
-        if len(AvailableConnections) != 0:
-            neurons_pairs = []
+        for layer in net:
+            neurons = layer.ReturnNeurons()
+            NeuronsIDs += neurons
 
-            for element in AvailableConnections:
-                source = element[0]
-                for target in element[1]:
-                    neurons_pairs.append([source, target])
+        maxConnections = (len(NeuronsIDs) - self.inputs)**2 + \
+            2 * self.inputs * (len(NeuronsIDs) - self.inputs)
+        if len(genome) < maxConnections:
+            size = len(NeuronsIDs)
+            valid = False
+            j = 0
+            while not valid:
+                j += 1
+                source = NeuronsIDs[random.randint(0, size - 1)]
+                target = NeuronsIDs[random.randint(self.inputs, size - 1)]
+                source_layer = self.ReturnOwnerLayer(source)
+                target_layer = self.ReturnOwnerLayer(target)
+                if source_layer >= target_layer:
+                    recurrent = True
+                else:
+                    recurrent = random.randint(0, 1) == 1
 
-            pair_index = random.randint(0, len(neurons_pairs) - 1)
-            pair = neurons_pairs[pair_index]
-            layer = self.ReturnOwnerLayer(pair[0])
-            new_connection = Connection()
-            new_connection.SetConnection(pair[0], pair[1], layer)
-            new_connection.SetWeight(random.random())
-            self.connections[layer].append(new_connection)
-        """
+                for connection in genome:
+                    if source == connection.input and target == connection.output and recurrent == connection.recurrent:
+                        valid = False
+                        break
+                    else:
+                        valid = True
+
+                if j > 1000:
+                    print("Desisto")
+                    break
+
+            if valid:
+                new_connection = Connection()
+                new_connection.SetConnection(
+                    source, target, source_layer, recurrent)
+                new_connection.SetOutLayer(target_layer)
+                new_connection.SetWeight(random.random())
+                self.connections[source_layer].append(new_connection)
+
+        else:
+            print("Rede cheia!")
 
     def ReturnOwnerLayer(self, neuronID):
+        Ownerlayer = None
+        if neuronID >= self.inputs and neuronID < (self.inputs + 1 + self.outputs):
+            Ownerlayer = len(self.connections) - 1
+
         for layer in self.connections:
             for connection in layer:
                 if connection.input == neuronID:
-                    return connection.from_layer
+                    Ownerlayer = connection.from_layer
 
-        return None
+        return Ownerlayer
 
     def NetRepresentation(self):
         if self.Net == None:
@@ -395,7 +436,10 @@ class NEAT:
 player = Genome()
 player.InitGenome(2, 3)
 player.RandomNode()
-player.RandomConnection()
+for i in range(0, 40):
+    player.RandomConnection()
+
+print(player)
 
 """
 copyPlayer = copy.deepcopy(player)
@@ -424,11 +468,20 @@ for i in range(0, connections):
     player.RandomConnection()
 
 print(player)
+"""
+
 player.InputData([2.5, 3.6])
+player.FeedForward()
+result = player.ReturnOutput()
+print(player.Activations)
+
+player.ClearNet()
+
+player.InputData([1.3, 6.7])
+print(player.LastActivations)
 player.FeedForward()
 result = player.ReturnOutput()
 
 player.ClearNet()
 
 print(result)
-"""
