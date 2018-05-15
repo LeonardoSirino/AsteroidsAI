@@ -14,7 +14,7 @@ class neuron:
         self.forward_connections = []
         self.weights = []
 
-    def AddConection(self, ID, weight):
+    def AddNetConnection(self, ID, weight):
         try:
             self.forward_connections.index(ID)
         except ValueError:
@@ -51,19 +51,16 @@ class Layer:
         self.neurons = []
         self.neuronsIDs = []
 
-    def AddConection(self, Connection):
+    def AddNetConnection(self, Connection):
         try:
             # Neurônio já existe, apenas a conexão será inserida
             index = self.neuronsIDs.index(Connection.input)
             selected_neuron = self.neurons[index]
-            selected_neuron.AddConection(Connection.output, Connection.weight)
-        except ValueError:
-            # Neurônio não existe, será criado e adicionado
-            self.neuronsIDs.append(Connection.input)
-            new_neuron = neuron(Connection.input)
-            new_neuron.AddConection(Connection.output, Connection.weight)
+            selected_neuron.AddNetConnection(Connection.output, Connection.weight)
             self.neurons.append(new_neuron)
-
+        except:
+            pass
+            
     def ReturnNeurons(self):
         return self.neuronsIDs
 
@@ -92,12 +89,14 @@ class Connection:
         Connection.innovation_number += 1
         self.from_layer = 0
         self.enable = True
+        self.recurrent = False
 
-    def SetConnection(self, input, output, layer):
+    def SetConnection(self, input, output, layer, recurrent):
         self.input = input
         self.output = output
         self.from_layer = layer
         self.to_layer = layer + 1
+        self.recurrent = recurrent
 
     def SetWeight(self, weight):
         self.weight = weight
@@ -128,6 +127,7 @@ class Genome:
         self.CromIndex = inputs + 1 + outputs
         self.WeightedSums = [0] * (self.inputs + self.outputs)
         self.Activations = [0] * (self.inputs + self.outputs)
+        self.LastActivations = [0] * (self.inputs + self.outputs)
         """
         As weighted sums e as activations são toda a informação contida na rede.
         Os primeiros elementos são destinados aos nós de entrada, sendo seguidos pelos nós de saída.
@@ -139,7 +139,7 @@ class Genome:
             for j in range(0, self.outputs):
                 new_connection = Connection()
                 new_connection.SetConnection(
-                    i, self.inputs + j, 0)
+                    i, self.inputs + j, 0, False)
                 first_connections.append(new_connection)
 
         self.connections[0] = first_connections
@@ -161,14 +161,20 @@ class Genome:
                         a = self.ActivateFunction(ws)
                         self.Activations[connection.input] = a
 
-                    a = self.Activations[connection.input]
+                    if connection.recurrent:
+                        a = self.LastActivations[connection.input]
+                    else:
+                        a = self.Activations[connection.input]
                     w = connection.weight
                     self.WeightedSums[connection.output] += a * w
 
-        for k in range(0, self.outputs):
+        for k in range(0, self.outputs):  # Ativaçoes da output Layer
             ws = self.WeightedSums[k + self.inputs]
             a = self.ActivateFunction(ws)
             self.Activations[k + self.inputs] = a
+
+        # Armazenamento das ativaçõe na memória
+        self.LastActivations = self.Activations[:]
 
     def ReturnOutput(self):
         output = self.Activations[self.inputs:self.inputs + self.outputs]
@@ -179,13 +185,13 @@ class Genome:
         self.WeightedSums = [0] * size
         self.Activations = [0] * size
 
-    def AddNode(self):
+    def RandomNode(self):
         LinearizedGenome = self.ReturnLinearizedGenome()
         valid = False
         while not valid:
             connection_index = random.randint(0, len(LinearizedGenome) - 1)
             connection = LinearizedGenome[connection_index]
-            valid = connection.enable
+            valid = connection.enable and not connection.recurrent
 
         newNode_layer = connection.from_layer + 1
 
@@ -195,12 +201,12 @@ class Genome:
 
         Con1 = Connection()
         Con1.SetConnection(connection.input, self.CromIndex,
-                           connection.from_layer)
+                           connection.from_layer, False)
         Con1.SetWeight(connection.weight)
         self.connections[connection.from_layer].append(Con1)
 
         Con2 = Connection()
-        Con2.SetConnection(self.CromIndex, connection.output, newNode_layer)
+        Con2.SetConnection(self.CromIndex, connection.output, newNode_layer, False)
         Con2.SetWeight(1)
         self.connections[newNode_layer].append(Con2)
 
@@ -208,8 +214,9 @@ class Genome:
         self.CromIndex += 1
         self.WeightedSums += [0]
         self.Activations += [0]
+        self.LastActivations += [0]
 
-        self.DelConnection(connection)
+        self.DisableConnection(connection)
 
     def ReturnLinearizedGenome(self):
         LinearizedGenome = []
@@ -218,7 +225,7 @@ class Genome:
 
         return LinearizedGenome
 
-    def DelConnection(self, Con_to_del):
+    def DisableConnection(self, con_to_disable):
         layer_del = 0
         con_del = 0
         layer_index = 0
@@ -226,7 +233,7 @@ class Genome:
         for layer in self.connections:
             con_index = 0
             for connection in layer:
-                if connection == Con_to_del:
+                if connection == con_to_disable:
                     delete = True
                     layer_del = layer_index
                     con_del = con_index
@@ -247,27 +254,12 @@ class Genome:
 
         self.connections.insert(layer_index, [])
 
-    def AddConection(self):
-        AvailableConnections = []
+    def RandomConnection(self):
         self.NetRepresentation()
         net = self.Net
-        jmax = len(net) - 2
+        print(net)
 
-        j = 0
-        for layer in net:
-            next_layer_neurons = net[j + 1].ReturnNeurons()
-            for neuron in layer.neurons:
-                neuron_avb_con = neuron.AvailableConnections(
-                    next_layer_neurons)
-                if neuron_avb_con == []:
-                    pass
-                else:
-                    AvailableConnections.append([neuron.ID, neuron_avb_con])
-
-            j += 1
-            if j > jmax:
-                break
-
+        """
         if len(AvailableConnections) != 0:
             neurons_pairs = []
 
@@ -283,6 +275,7 @@ class Genome:
             new_connection.SetConnection(pair[0], pair[1], layer)
             new_connection.SetWeight(random.random())
             self.connections[layer].append(new_connection)
+        """
 
     def ReturnOwnerLayer(self, neuronID):
         for layer in self.connections:
@@ -300,7 +293,7 @@ class Genome:
                 rep_layer = Layer(i)
                 for connection in layer:
                     if connection.enable:
-                        rep_layer.AddConection(connection)
+                        rep_layer.AddNetConnection(connection)
 
                 net.append(rep_layer)
                 i += 1
@@ -401,29 +394,34 @@ class NEAT:
 
 player = Genome()
 player.InitGenome(2, 3)
+player.RandomNode()
+player.RandomConnection()
+
+"""
 copyPlayer = copy.deepcopy(player)
 for i in range(0, 10):
-    player.AddNode()
+    player.RandomNode()
 
-player.AddConection()
-copyPlayer.AddNode()
-copyPlayer.AddConection()
+player.RandomConnection()
+copyPlayer.RandomNode()
+copyPlayer.RandomConnection()
 
 myNEAT = NEAT()
 distance = myNEAT.CalcDistance(
     player.ReturnLinearizedGenome(), copyPlayer.ReturnLinearizedGenome())
 print(distance)
+"""
 
 """
 print(player)
 
 nodes = 5
 for i in range(0, nodes):
-    player.AddNode()
+    player.RandomNode()
 
 connections = 5
 for i in range(0, connections):
-    player.AddConection()
+    player.RandomConnection()
 
 print(player)
 player.InputData([2.5, 3.6])
