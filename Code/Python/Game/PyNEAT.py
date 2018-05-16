@@ -1,6 +1,6 @@
 import random
 import numpy as np
-import copy
+import matplotlib.pyplot as plt
 
 
 class neuron:
@@ -50,6 +50,7 @@ class Layer:
         self.number = number
         self.neurons = []
         self.neuronsIDs = []
+        self.NeuronYPosition = []
 
     def AddNetConnection(self, Connection):
         try:
@@ -162,9 +163,18 @@ class Genome:
             print("Número de inputs inadequado")
 
     def FeedForward(self):
+        RecurrentConnections = self.ReturnRecurrent()
+
+        # Relações recorrentes
+        for connection in RecurrentConnections:
+            a = self.LastActivations[connection.input]
+            w = connection.weight
+            self.WeightedSums[connection.output] += a * w
+
+        # Relações diretas
         for layer in self.connections:
             for connection in layer:
-                if connection.enable:
+                if connection.enable and not connection.recurrent:
                     if connection.from_layer > 0:
                         # Para o input layer não é preciso calcular as ativações
                         ws = self.WeightedSums[connection.input]
@@ -235,6 +245,15 @@ class Genome:
             LinearizedGenome += layer
 
         return LinearizedGenome
+
+    def ReturnRecurrent(self):
+        RecurrentConnections = []
+        for layer in self.connections:
+            for connection in layer:
+                if connection.recurrent:
+                    RecurrentConnections.append(connection)
+
+        return RecurrentConnections
 
     def DisableConnection(self, con_to_disable):
         layer_del = 0
@@ -367,6 +386,75 @@ class Genome:
 
         return text
 
+    def GenomeRepresentation(self):
+        self.NetRepresentation()
+        net = self.Net
+        display = NetDisplay(net)
+        display.nodesPlot()
+
+
+class NetDisplay:
+    def __init__(self, net):
+        self.net = net
+
+    def nodesPlot(self):
+        fig, ax = plt.subplots(1)
+        self.CalcNeuronsYpositions()
+        x = []
+        y = []
+        labels = []
+        for layer in self.net:
+            positions = layer.NeuronYPosition
+            y += positions
+            x += [layer.number] * len(positions)
+            labels += layer.ReturnNeurons()
+            for neuron in layer.neurons:
+                (x1, y1) = self.ReturnNeuronCoord(neuron.ID)
+                """
+                print(neuron.ID)
+                print("posição " + str(x1) + " " + str(y1))
+                print(neuron.forward_connections)
+                """
+                for (nextNeuron, weight) in zip(neuron.forward_connections, neuron.weights):
+                    (x2, y2) = self.ReturnNeuronCoord(nextNeuron)
+                    ax.plot([x1, x2], [y1, y2], 'b')
+                    
+        ax.plot(x, y, '.', markersize = 50, color = "black")
+        for (label, coordx, coordy) in zip(labels, x, y):
+            ax.annotate(str(label), xy = (coordx, coordy), color = "white")
+        ax.set_xlabel("Layer")
+        
+        plt.show()
+
+    def CalcNeuronsYpositions(self):
+        for layer in self.net:
+            neuronsYposition = []
+            size = len(layer.ReturnNeurons())
+            if size % 2 == 0:
+                for i in range(0, size // 2):
+                    neuronsYposition += [i + 0.5, -i - 0.5]
+            else:
+                neuronsYposition = [0]
+                for i in range(1, size // 2 + 1):
+                    neuronsYposition += [i, -i]
+            layer.NeuronYPosition = neuronsYposition
+
+    def ReturnNeuronCoord(self, neuronID):
+        coords = (0, 0)
+        for layer in self.net:
+            try:
+                neurons = layer.ReturnNeurons()
+                index = neurons.index(neuronID)
+                ypos = layer.neuronsYposition[index]
+                print(ypos)
+                coords = (layer.number, ypos)
+                print(coords)
+                return coords
+            except:
+                pass
+
+        return coords
+
 
 class NEAT:
     """
@@ -431,57 +519,3 @@ class NEAT:
                 lastIN = connection.innovation_number
 
         return lastIN
-
-
-player = Genome()
-player.InitGenome(2, 3)
-player.RandomNode()
-for i in range(0, 40):
-    player.RandomConnection()
-
-print(player)
-
-"""
-copyPlayer = copy.deepcopy(player)
-for i in range(0, 10):
-    player.RandomNode()
-
-player.RandomConnection()
-copyPlayer.RandomNode()
-copyPlayer.RandomConnection()
-
-myNEAT = NEAT()
-distance = myNEAT.CalcDistance(
-    player.ReturnLinearizedGenome(), copyPlayer.ReturnLinearizedGenome())
-print(distance)
-"""
-
-"""
-print(player)
-
-nodes = 5
-for i in range(0, nodes):
-    player.RandomNode()
-
-connections = 5
-for i in range(0, connections):
-    player.RandomConnection()
-
-print(player)
-"""
-
-player.InputData([2.5, 3.6])
-player.FeedForward()
-result = player.ReturnOutput()
-print(player.Activations)
-
-player.ClearNet()
-
-player.InputData([1.3, 6.7])
-print(player.LastActivations)
-player.FeedForward()
-result = player.ReturnOutput()
-
-player.ClearNet()
-
-print(result)
