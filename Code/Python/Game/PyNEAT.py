@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+import copy
 from pyvis.network import Network
 
 
@@ -125,6 +126,8 @@ class Connection:
 
 class Genome:
 
+    ID = 0
+
     def __init__(self):
         self.Net = None  # representação da rede neural
         self.connections = [[], []]
@@ -132,6 +135,10 @@ class Genome:
         As conexões são formadas por listas, cada elemento da lista é um layer da rede.
         Cada layer possui uma lista de conexões
         """
+        self.OwnerSpecie = None
+        self.score = 0
+        self.ID = Genome.ID
+        Genome.ID += 1
 
     def InitGenome(self, inputs, outputs):
         self.inputs = inputs + 1  # Bias neuron
@@ -207,6 +214,7 @@ class Genome:
         self.Activations = [0] * size
 
     def RandomNode(self):
+        self.Net = None
         LinearizedGenome = self.ReturnLinearizedGenome()
         valid = False
         while not valid:
@@ -286,8 +294,9 @@ class Genome:
         self.connections.insert(layer_index, [])
 
     def RandomConnection(self):
-        self.NetRepresentation()
+        self.__NetRepresentation()
         net = self.Net
+        self.Net = None
         genome = self.ReturnLinearizedGenome()
         NeuronsIDs = []
 
@@ -334,6 +343,13 @@ class Genome:
         else:
             print("Rede cheia!")
 
+    def RandonWeightVariation(self, prob, alpha):
+        for layer in self.connections:
+            for con in layer:
+                if con.enable:
+                    if random.random() < prob:
+                        con.weight += alpha * RandSim()
+
     def ReturnOwnerLayer(self, neuronID):
         Ownerlayer = None
         if neuronID >= self.inputs and neuronID < (self.inputs + 1 + self.outputs):
@@ -346,7 +362,7 @@ class Genome:
 
         return Ownerlayer
 
-    def NetRepresentation(self):
+    def __NetRepresentation(self):
         if self.Net == None:
             i = 1
             net = []
@@ -382,19 +398,24 @@ class Genome:
 
         return text
 
-    def GenomeRepresentation(self):
-        self.NetRepresentation()
+    def GenomeRepresentation(self, name):
+        self.__NetRepresentation()
         net = self.Net
         LinGen = self.ReturnLinearizedGenome()
-        display = NetDisplay(net, LinGen)
+        display = NetDisplay(net, LinGen, name)
         display.nodesPlot()
+
+    def SetScore(self, score):
+        SharedScore = score / self.OwnerSpecie.SpeciePopulation()
+        self.score = SharedScore
 
 
 class NetDisplay:
-    def __init__(self, net, LinGen):
+    def __init__(self, net, LinGen, name):
         self.net = net
         self.LinGen = LinGen
         self.Grafo = Network(height="600px", width="1000px")
+        self.name = name
 
         self.Grafo.toggle_physics(False)
         self.Grafo.inherit_edge_colors_from(False)
@@ -425,14 +446,15 @@ class NetDisplay:
                     self.Grafo.add_edge(
                         con.input, con.output, value=abs(con.weight))
                     self.Grafo.edges[i].update(
-                        {'color': color, 'arrows': 'to', 'arrowStrikethrough': 'false', 'title': 'IN: ' + str(con.innovation_number), 'dashes': dashes})
+                        {'color': color, 'arrows': 'to', 'arrowStrikethrough': 'false',
+                         'title': 'IN: ' + str(con.innovation_number), 'dashes': dashes, 'shadow': dashes})
                     i += 1
                 except:
                     pass
 
         self.Grafo.show_buttons()
         self.Grafo.set_edge_smooth('dynamic')
-        self.Grafo.show("Grafo.html")
+        self.Grafo.show(self.name + ".html")
 
     def CalcNeuronsYpositions(self):
         for layer in self.net:
@@ -448,6 +470,34 @@ class NetDisplay:
             layer.NeuronYPosition = neuronsYposition
 
 
+class Specie:
+
+    ID = 0
+
+    def __init__(self, RepresentationMember, NEAT):
+        self.RepresentationMember = RepresentationMember
+        self.members = [RepresentationMember]
+        self.NEAT = NEAT
+        self.ID = Specie.ID
+        Specie.ID += 1
+
+    def addMember(self, newMember):
+        distance = self.NEAT.CalcDistance(self.RepresentationMember, newMember)
+        if distance < self.NEAT.DeltaTHR:
+            self.members.append(newMember)
+            return True
+        else:
+            return False
+
+    def SpeciePopulation(self):
+        return len(self.members)
+
+    def Reproduction(self, proportion):
+        numberOfNewMembers = round(self.SpeciePopulation() * proportion)
+        for i in range(0, numberOfNewMembers):
+            pass  # CONTINUAR
+
+
 class NEAT:
     """
     Classe para fornecer as funcionalidades esperadas num algoritmo de NEAT
@@ -457,13 +507,20 @@ class NEAT:
         self.c1 = 1
         self.c2 = 1
         self.c3 = 1
+        self.DeltaTHR = 3
+        self.probRandomNode = 0.3
+        self.probRandomConnection = 0.3
+        self.probRandomWeightVariation = 0.7
+        self.initialPopulation = 5
 
     def CalcDistance(self, gen1, gen2):
-        """Cálculo da distância entre duas topoligas diferentes        
+        """Cálculo da distância entre duas topologias diferentes        
         Arguments:
-            gen1 {[linearized genome]} -- [genoma 1]
-            gen2 {[linearized genome]} -- [genoma 2]
+            gen1 {[genome]} -- [genoma 1]
+            gen2 {[genome]} -- [genoma 2]
         """
+        gen1 = gen1.ReturnLinearizedGenome()
+        gen2 = gen2.ReturnLinearizedGenome()
         lastIN1 = self.returnLastInnovation(gen1)
         lastIN2 = self.returnLastInnovation(gen2)
         N = np.max([len(gen1), len(gen2)])
@@ -500,8 +557,10 @@ class NEAT:
         distance = self.c1 * excess / N + self.c2 * \
             disjoint / N + self.c3 * weight_distance
 
+        """
         print("Disjoint: " + str(disjoint) + " excess: " +
               str(excess) + " weight: " + str(round(weight_distance, 2)))
+        """
         return distance
 
     def returnLastInnovation(self, gen):
@@ -512,8 +571,75 @@ class NEAT:
 
         return lastIN
 
+    def SetInitialTopology(self, inputs, outputs):
+        firstMember = Genome()
+        firstMember.InitGenome(inputs, outputs)
+        firstSpecie = Specie(firstMember, self)
+        self.species = [firstSpecie]
+
+        for i in range(1, self.initialPopulation):
+            member = copy.deepcopy(firstMember)
+            # Mudança completas dos pesos da rede inicial
+            member.RandonWeightVariation(1, 1)
+            member.ID = Genome.ID
+            Genome.ID += 1 # Mudança do ID do Genoma
+            self.addMember(member)
+
+    def GetAllMembers(self):
+        members = []  # Os membros são objetos do tipo Genome
+        for specie in self.species:
+            members += specie.members
+
+        return members
+
+    def addMember(self, member):
+        match = False
+        # Verifica se existe alguma espécie que comporte o novo membro
+        for specie in self.species:
+            added = specie.addMember(member)
+            if added:
+                match = True
+                break
+        # Se não existir uma espécie adequada, é criada uma nova espécie
+        if not match:
+            newSpecie = Specie(member, self)
+            self.species.append(newSpecie)
+
+    def RandomUpdate(self):
+        for member in self.GetAllMembers():
+            # Variação aleatória dos pesos
+            member.RandonWeightVariation(self.probRandomWeightVariation, 1) # Falta analisar se o membro com os pesos alterados ainda pertence a mesma espécie
+
+            newMember = copy.deepcopy(member)
+            new = False
+            # Criação de nó aleatórios
+            if random.random() < self.probRandomNode:
+                member.RandomNode()
+                new = True
+
+            # Criação de conexões aleatórias
+            if random.random() < self.probRandomConnection:
+                member.RandomConnection()
+                new = True
+
+            if new:
+                newMember.ID = Genome.ID
+                Genome.ID += 1 # Mudança do ID do Genoma
+                self.addMember(newMember)
+
+    def PrintSpecies(self):
+        for specie in self.species:
+            text = "Espécie " + str(specie.ID) + " com " + \
+                str(specie.SpeciePopulation()) + " membros"
+            
+            membros = ""
+            for member in specie.members:
+                membros += ", " + str(member.ID)
+            print(text + " " + membros)
 
 # Definição de algumas funções úteis
+
+
 def RandSim():
     rand = 2 * (random.random() - 0.5)
     return rand
