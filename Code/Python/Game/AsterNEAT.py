@@ -8,6 +8,9 @@ player.RandomNode()
 for i in range(0, 5):
     player.RandomNode()
 
+for i in range(0, 10):
+    player.RandomConnection()
+
 player.GenomeRepresentation()
 
 """

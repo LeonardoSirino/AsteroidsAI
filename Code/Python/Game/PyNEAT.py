@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+from pyvis.network import Network
 
 
 class neuron:
@@ -89,7 +90,7 @@ class Connection:
     def __init__(self):
         self.input = 0
         self.output = 0
-        self.weight = random.random()
+        self.weight = RandSim()
         self.innovation_number = Connection.innovation_number
         Connection.innovation_number += 1
         self.from_layer = 0
@@ -327,7 +328,7 @@ class Genome:
                 new_connection.SetConnection(
                     source, target, source_layer, recurrent)
                 new_connection.SetOutLayer(target_layer)
-                new_connection.SetWeight(random.random())
+                new_connection.SetWeight(RandSim())
                 self.connections[source_layer].append(new_connection)
 
         else:
@@ -358,7 +359,7 @@ class Genome:
                 net.append(rep_layer)
                 i += 1
 
-            output_layer = Layer(i)
+            output_layer = Layer(i - 1)
             output_layer.neuronsIDs = range(
                 self.inputs, self.inputs + self.outputs)
             net.append(output_layer)
@@ -389,42 +390,47 @@ class Genome:
     def GenomeRepresentation(self):
         self.NetRepresentation()
         net = self.Net
-        display = NetDisplay(net)
+        LinGen = self.ReturnLinearizedGenome()
+        display = NetDisplay(net, LinGen)
         display.nodesPlot()
 
 
 class NetDisplay:
-    def __init__(self, net):
+    def __init__(self, net, LinGen):
         self.net = net
+        self.LinGen = LinGen
+        self.Grafo = Network(height="600px", width="1000px")
+
+        self.Grafo.toggle_physics(False)
+        self.Grafo.inherit_edge_colors_from(False)
 
     def nodesPlot(self):
-        fig, ax = plt.subplots(1)
         self.CalcNeuronsYpositions()
-        x = []
-        y = []
-        labels = []
         for layer in self.net:
-            positions = layer.NeuronYPosition
-            y += positions
-            x += [layer.number] * len(positions)
-            labels += layer.ReturnNeurons()
-            for neuron in layer.neurons:
-                (x1, y1) = self.ReturnNeuronCoord(neuron.ID)
-                """
-                print(neuron.ID)
-                print("posição " + str(x1) + " " + str(y1))
-                print(neuron.forward_connections)
-                """
-                for (nextNeuron, weight) in zip(neuron.forward_connections, neuron.weights):
-                    (x2, y2) = self.ReturnNeuronCoord(nextNeuron)
-                    ax.plot([x1, x2], [y1, y2], 'b')
-                    
-        ax.plot(x, y, '.', markersize = 50, color = "black")
-        for (label, coordx, coordy) in zip(labels, x, y):
-            ax.annotate(str(label), xy = (coordx, coordy), color = "white")
-        ax.set_xlabel("Layer")
-        
-        plt.show()
+            neurons = layer.ReturnNeurons()
+            y_positions = layer.NeuronYPosition
+            for neuron, y_pos in zip(neurons, y_positions):
+                self.Grafo.add_node(
+                    neuron, x=layer.number * 100, y=y_pos * 100)
+
+        i = 0
+        for con in self.LinGen:
+            if con.enable:
+                if con.weight >= 0:
+                    color = 'blue'
+                else:
+                    color = 'red'
+                try:
+                    self.Grafo.add_edge(
+                        con.input, con.output, value=abs(con.weight))
+                    self.Grafo.edges[i].update({'color': color})
+                    i += 1
+                except:
+                    pass
+
+        self.Grafo.show_buttons()
+        self.Grafo.set_edge_smooth('dynamic')
+        self.Grafo.show("Grafo.html")
 
     def CalcNeuronsYpositions(self):
         for layer in self.net:
@@ -438,22 +444,6 @@ class NetDisplay:
                 for i in range(1, size // 2 + 1):
                     neuronsYposition += [i, -i]
             layer.NeuronYPosition = neuronsYposition
-
-    def ReturnNeuronCoord(self, neuronID):
-        coords = (0, 0)
-        for layer in self.net:
-            try:
-                neurons = layer.ReturnNeurons()
-                index = neurons.index(neuronID)
-                ypos = layer.neuronsYposition[index]
-                print(ypos)
-                coords = (layer.number, ypos)
-                print(coords)
-                return coords
-            except:
-                pass
-
-        return coords
 
 
 class NEAT:
@@ -519,3 +509,9 @@ class NEAT:
                 lastIN = connection.innovation_number
 
         return lastIN
+
+
+# Definição de algumas funções úteis
+def RandSim():
+    rand = 2 * (random.random() - 0.5)
+    return rand
