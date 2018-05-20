@@ -1,17 +1,19 @@
 from PyNEAT import Genome, NEAT
 import copy
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 player = Genome()
 player.InitGenome(2, 3)
 player.RandomNode()
-for i in range(0, 5):
+for i in range(0, 10):
     player.RandomNode()
 
-for i in range(0, 10):
+for i in range(0, 100):
     player.RandomConnection()
 
-player.GenomeRepresentation()
+#player.GenomeRepresentation()
 
 """
 copyPlayer = copy.deepcopy(player)
@@ -42,12 +44,22 @@ for i in range(0, connections):
 
 print(player)
 """
-"""
-for i in range(0, 10):
-    player.InputData([2.5, 3.6])
+range = 5
+positive = np.linspace(-range, range, num = 50)
+negative = np.linspace(range, -range, num = 50)
+inputData = np.concatenate((positive, negative))
+outputData = [[], [], []]
+
+for data in inputData:
+    player.InputData([data, 2 * data])
     player.FeedForward()
     result = player.ReturnOutput()
-    print(result)
+    i = 0
+    for value in result:
+        outputData[i].append(value)
+        i += 1
 
     player.ClearNet()
-"""
+
+plt.plot(inputData, outputData[0], inputData, outputData[1], inputData, outputData[2])
+plt.show()

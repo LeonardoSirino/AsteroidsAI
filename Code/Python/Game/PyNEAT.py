@@ -367,13 +367,8 @@ class Genome:
             self.Net = net
 
     def ActivateFunction(self, ws):
-        """MUDAR PARA A SIGMOIDAL
-        """
-
-        if ws > 0:
-            return ws
-        else:
-            return 0
+        sigmoid = 1 / (1 + np.exp(-ws))
+        return sigmoid
 
     def __str__(self):
         text = ""
@@ -420,10 +415,17 @@ class NetDisplay:
                     color = 'blue'
                 else:
                     color = 'red'
+
+                if con.recurrent:
+                    dashes = 'true'
+                else:
+                    dashes = 'false'
+
                 try:
                     self.Grafo.add_edge(
                         con.input, con.output, value=abs(con.weight))
-                    self.Grafo.edges[i].update({'color': color})
+                    self.Grafo.edges[i].update(
+                        {'color': color, 'arrows': 'to', 'arrowStrikethrough': 'false', 'title': 'IN: ' + str(con.innovation_number), 'dashes': dashes})
                     i += 1
                 except:
                     pass

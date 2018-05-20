@@ -18,7 +18,7 @@ for i in range(0, cons):
 
 net.show_buttons()
 
-net.edges[0].update({'color': 'red'})
+net.edges[0].update({'color': 'red', 'arrows':'to', 'arrowStrikethrough': 'false'})
 
 print(net.html)
 
