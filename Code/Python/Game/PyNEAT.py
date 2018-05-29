@@ -409,6 +409,12 @@ class Genome:
         SharedScore = score / self.OwnerSpecie.SpeciePopulation()
         self.score = SharedScore
 
+    def MemberDeath(self):
+        self.OwnerSpecie.RemoveMember(self.ID)
+
+    def SetSpecie(self, specie):
+        self.OwnerSpecie = specie
+
 
 class NetDisplay:
     def __init__(self, net, LinGen, name):
@@ -484,13 +490,48 @@ class Specie:
     def addMember(self, newMember):
         distance = self.NEAT.CalcDistance(self.RepresentationMember, newMember)
         if distance < self.NEAT.DeltaTHR:
+            newMember.SetSpecie(self)
             self.members.append(newMember)
             return True
         else:
             return False
 
+    def GetMember(self, ID):
+        for member in self.members:
+            if member.ID == ID:
+                return member
+
+        return None
+
     def SpeciePopulation(self):
         return len(self.members)
+
+    def RemoveMember(self, ID):
+        if len(self.members) == 1:
+            self.Extinction()
+        else:
+            member = self.GetMember(ID)
+            try:
+                index = self.members.index(member)
+                self.members.__delitem__(index)
+                if member == self.RepresentationMember:
+                    ranIndex = random.randint(0, len(self.members) - 1)
+                    self.RepresentationMember = self.members[ranIndex]
+            except:
+                #print("Membro não encontrado")
+                pass
+
+    def Extinction(self):
+        self.NEAT.removeSpecie(self)
+        print("Extinção da espécie " + str(self.ID))
+
+    def RevalidateMembers(self):
+        for member in self.members:        
+            distance = self.NEAT.CalcDistance(self.RepresentationMember, member)
+            if distance > self.NEAT.DeltaTHR:
+                member.MemberDeath()
+                self.NEAT.addMember(member)
+
 
     def Reproduction(self, proportion):
         numberOfNewMembers = round(self.SpeciePopulation() * proportion)
@@ -506,11 +547,12 @@ class NEAT:
     def __init__(self):
         self.c1 = 1
         self.c2 = 1
-        self.c3 = 1
+        self.c3 = 0.6
         self.DeltaTHR = 3
         self.probRandomNode = 0.3
         self.probRandomConnection = 0.3
         self.probRandomWeightVariation = 0.7
+        self.probMemberMutation = 0.3
         self.initialPopulation = 5
 
     def CalcDistance(self, gen1, gen2):
@@ -548,6 +590,8 @@ class NEAT:
             else:
                 disjoint += 1
 
+        weight_distance = np.sqrt(weight_distance)
+
         excess = 0
         olderLastIN = np.min([lastIN1, lastIN2])
         for connection in newer:
@@ -575,6 +619,7 @@ class NEAT:
         firstMember = Genome()
         firstMember.InitGenome(inputs, outputs)
         firstSpecie = Specie(firstMember, self)
+        firstMember.SetSpecie(firstSpecie)
         self.species = [firstSpecie]
 
         for i in range(1, self.initialPopulation):
@@ -582,7 +627,7 @@ class NEAT:
             # Mudança completas dos pesos da rede inicial
             member.RandonWeightVariation(1, 1)
             member.ID = Genome.ID
-            Genome.ID += 1 # Mudança do ID do Genoma
+            Genome.ID += 1  # Mudança do ID do Genoma
             self.addMember(member)
 
     def GetAllMembers(self):
@@ -605,10 +650,27 @@ class NEAT:
             newSpecie = Specie(member, self)
             self.species.append(newSpecie)
 
+    def removeSpecie(self, specie_to_del):
+        try:
+            index = self.species.index(specie_to_del)
+            self.species.__delitem__(index)
+        except:
+            pass
+
     def RandomUpdate(self):
         for member in self.GetAllMembers():
-            # Variação aleatória dos pesos
-            member.RandonWeightVariation(self.probRandomWeightVariation, 1) # Falta analisar se o membro com os pesos alterados ainda pertence a mesma espécie
+            if random.random() <= self.probMemberMutation:
+                # Variação aleatória dos pesos
+                member.RandonWeightVariation(self.probRandomWeightVariation, 1)
+                # Se o membro for o representante da espécie, os outros membros devem ser reavaliados
+                if member == member.OwnerSpecie.RepresentationMember:
+                    member.OwnerSpecie.RevalidateMembers()
+                else:
+                    if self.CalcDistance(member, member.OwnerSpecie.RepresentationMember) >= self.DeltaTHR: # Analisando se o membro ainda pertence a mesma espécie
+                        member.MemberDeath()
+                        member.ID = Genome.ID
+                        self.addMember(member)
+                        Genome.ID += 1
 
             newMember = copy.deepcopy(member)
             new = False
@@ -624,18 +686,33 @@ class NEAT:
 
             if new:
                 newMember.ID = Genome.ID
-                Genome.ID += 1 # Mudança do ID do Genoma
+                Genome.ID += 1  # Mudança do ID do Genoma
                 self.addMember(newMember)
 
     def PrintSpecies(self):
         for specie in self.species:
             text = "Espécie " + str(specie.ID) + " com " + \
                 str(specie.SpeciePopulation()) + " membros"
-            
+
             membros = ""
             for member in specie.members:
                 membros += ", " + str(member.ID)
             print(text + " " + membros)
+
+    def Selection(self, survivors):
+        if survivors >= len(self.GetAllMembers()):
+            pass
+        else:
+            scores = []
+            for member in self.GetAllMembers():
+                scores.append(member.score)
+
+            scores.sort(reverse = True)
+            thr = scores[survivors]
+
+            for member in self.GetAllMembers():
+                if member.score <= thr:
+                    member.MemberDeath()
 
 # Definição de algumas funções úteis
 
