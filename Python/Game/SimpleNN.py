@@ -104,12 +104,15 @@ class AGPlayer:
         input = np.array(NN_input + [1])
         input = [input]
         input = np.transpose(input)
+        # input layer
         a1 = np.matmul(self.w1, input)
         o1 = self.ActivateFunction(a1)
         o1 = np.append(o1, [1])
+        # hidden layer
         a2 = np.matmul(self.w2, o1)
         o2 = self.ActivateFunction(a2)
         o2 = np.append(o2, [1])
+        # output layer
         a3 = np.matmul(self.w3, o2)
         o3 = self.ActivateFunction(a3)
         return o3
