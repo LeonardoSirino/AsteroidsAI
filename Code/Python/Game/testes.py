@@ -1,5 +1,7 @@
-a = [1, 2, 3]
-b = [4, 5]
+import numpy as np
 
-a.sort(reverse=True)
+a = np.array([1,2,3])
+a = np.append(a, [1])
+
 print(a)
+print(type(a))

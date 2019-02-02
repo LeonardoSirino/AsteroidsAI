@@ -106,19 +106,17 @@ class AGPlayer:
         input = np.transpose(input)
         a1 = np.matmul(self.w1, input)
         o1 = self.ActivateFunction(a1)
-        o1.append(1)
+        o1 = np.append(o1, [1])
         a2 = np.matmul(self.w2, o1)
         o2 = self.ActivateFunction(a2)
-        o2.append(1)
+        o2 = np.append(o2, [1])
         a3 = np.matmul(self.w3, o2)
         o3 = self.ActivateFunction(a3)
         return o3
 
     def ActivateFunction(self, a):
-        o = []
-        for value in a:
-            sigmoid = 1 / (1 + np.exp(-value))
-            o.append(sigmoid)
+        a = np.array(a)
+        o = 1 / (1 + np.exp(-a))
 
         return o
 
