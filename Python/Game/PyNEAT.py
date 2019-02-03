@@ -526,12 +526,12 @@ class Specie:
         print("Extinção da espécie " + str(self.ID))
 
     def RevalidateMembers(self):
-        for member in self.members:        
-            distance = self.NEAT.CalcDistance(self.RepresentationMember, member)
+        for member in self.members:
+            distance = self.NEAT.CalcDistance(
+                self.RepresentationMember, member)
             if distance > self.NEAT.DeltaTHR:
                 member.MemberDeath()
                 self.NEAT.addMember(member)
-
 
     def Reproduction(self, proportion):
         numberOfNewMembers = round(self.SpeciePopulation() * proportion)
@@ -666,7 +666,8 @@ class NEAT:
                 if member == member.OwnerSpecie.RepresentationMember:
                     member.OwnerSpecie.RevalidateMembers()
                 else:
-                    if self.CalcDistance(member, member.OwnerSpecie.RepresentationMember) >= self.DeltaTHR: # Analisando se o membro ainda pertence a mesma espécie
+                    # Analisando se o membro ainda pertence a mesma espécie
+                    if self.CalcDistance(member, member.OwnerSpecie.RepresentationMember) >= self.DeltaTHR:
                         member.MemberDeath()
                         member.ID = Genome.ID
                         self.addMember(member)
@@ -695,9 +696,11 @@ class NEAT:
                 str(specie.SpeciePopulation()) + " membros"
 
             membros = ""
+            scores = []
             for member in specie.members:
                 membros += ", " + str(member.ID)
-            print(text + " " + membros)
+                scores.append(member.score)
+            print(text + " " + membros[2:] + ' | Melhos score: ' + str(round(np.max(scores), 2)))
 
     def Selection(self, survivors):
         if survivors >= len(self.GetAllMembers()):
@@ -707,11 +710,11 @@ class NEAT:
             for member in self.GetAllMembers():
                 scores.append(member.score)
 
-            scores.sort(reverse = True)
+            scores.sort(reverse=True)
             thr = scores[survivors]
 
             for member in self.GetAllMembers():
-                if member.score <= thr:
+                if member.score <= thr and len(self.GetAllMembers()) >= survivors:
                     member.MemberDeath()
 
 # Definição de algumas funções úteis
